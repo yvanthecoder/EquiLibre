@@ -1,122 +1,168 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Requirement, Submission } from '../types/api';
-// import api from '../lib/api';
-import { getMockRequirementsForUser, getCurrentMockUser } from '../lib/mockData';
+import {
+  Requirement,
+  CreateRequirementRequest,
+  UpdateRequirementRequest,
+  Submission,
+} from '../types/api';
+import { requirementService, classService } from '../services/api.service';
 import toast from 'react-hot-toast';
 
-// Mock mode flag
-const USE_MOCK_DATA = true;
-
 export const useRequirements = (classId?: string) => {
-  return useQuery({
-    queryKey: ['requirements', classId],
-    queryFn: async (): Promise<Requirement[]> => {
-      if (USE_MOCK_DATA) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const currentUser = getCurrentMockUser();
-        return getMockRequirementsForUser(currentUser);
-      }
-      // const { data } = await api.get(`/classes/${classId}/requirements`);
-      // return data;
-      return [];
-    },
-    enabled: !!classId,
-  });
-};
-
-export const useRequirement = (id: string) => {
-  return useQuery({
-    queryKey: ['requirements', id],
-    queryFn: async (): Promise<Requirement> => {
-      if (USE_MOCK_DATA) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const currentUser = getCurrentMockUser();
-        const requirements = getMockRequirementsForUser(currentUser);
-        const requirement = requirements.find(r => r.id === id);
-        if (!requirement) throw new Error('Requirement not found');
-        return requirement;
-      }
-      // const { data } = await api.get(`/requirements/${id}`);
-      // return data;
-      throw new Error('Backend not implemented');
-    },
-    enabled: !!id,
-  });
-};
-
-export const useSubmitRequirement = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ requirementId, file }: { requirementId: string; file: File }) => {
-      if (USE_MOCK_DATA) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Simulate successful submission
-        const currentUser = getCurrentMockUser();
-        const submission: Submission = {
-          id: 'sub_' + Date.now(),
-          requirementId,
-          userId: currentUser.id,
-          filePath: `/uploads/${file.name}`,
-          fileName: file.name,
-          status: 'SUBMITTED',
-          submittedAt: new Date().toISOString(),
-        };
-        return submission;
-      }
-      
-      // const formData = new FormData();
-      // formData.append('file', file);
-      // const { data } = await api.post(`/requirements/${requirementId}/submissions`, formData, {
-      //   headers: {
-      //     'Content-Type': 'multipart/form-data',
-      //   },
-      // });
-      // return data;
-      throw new Error('Backend not implemented');
+  // Fetch all requirements for a class
+  const { data: requirements, isLoading } = useQuery({
+    queryKey: ['requirements', classId],
+    queryFn: () => classService.getClassRequirements(classId!),
+    enabled: !!classId,
+  });
+
+  return {
+    requirements,
+    isLoading,
+  };
+};
+
+export const useRequirement = (requirementId?: string) => {
+  const queryClient = useQueryClient();
+
+  // Fetch single requirement
+  const { data: requirement, isLoading } = useQuery({
+    queryKey: ['requirements', requirementId],
+    queryFn: () => requirementService.getRequirement(requirementId!),
+    enabled: !!requirementId,
+  });
+
+  // Fetch submissions for a requirement
+  const { data: submissions, isLoading: isLoadingSubmissions } = useQuery({
+    queryKey: ['requirements', requirementId, 'submissions'],
+    queryFn: () => requirementService.getSubmissions(requirementId!),
+    enabled: !!requirementId,
+  });
+
+  // Submit requirement mutation
+  const submitMutation = useMutation({
+    mutationFn: (file: File) => requirementService.submitRequirement(requirementId!, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requirements', requirementId, 'submissions'] });
+      toast.success('Document soumis avec succès !');
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['requirements', variables.requirementId] });
-      queryClient.invalidateQueries({ queryKey: ['requirements'] });
-      toast.success('Fichier soumis avec succès !');
-    },
-    onError: () => {
-      toast.error('Erreur lors de la soumission');
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la soumission';
+      toast.error(message);
     },
   });
+
+  // Update submission status mutation (for instructors)
+  const updateSubmissionStatusMutation = useMutation({
+    mutationFn: ({
+      submissionId,
+      status,
+      feedback,
+    }: {
+      submissionId: string;
+      status: 'VALIDATED' | 'REJECTED';
+      feedback?: string;
+    }) => requirementService.updateSubmissionStatus(requirementId!, submissionId, status, feedback),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requirements', requirementId, 'submissions'] });
+      toast.success('Statut mis à jour !');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
+      toast.error(message);
+    },
+  });
+
+  return {
+    requirement,
+    isLoading,
+    submissions,
+    isLoadingSubmissions,
+    submitRequirement: submitMutation.mutate,
+    isSubmitting: submitMutation.isPending,
+    updateSubmissionStatus: updateSubmissionStatusMutation.mutate,
+    isUpdatingStatus: updateSubmissionStatusMutation.isPending,
+  };
 };
 
 export const useCreateRequirement = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (requirement: Omit<Requirement, 'id' | 'createdAt'>) => {
-      if (USE_MOCK_DATA) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const newRequirement: Requirement = {
-          ...requirement,
-          id: 'req_' + Date.now(),
-          createdAt: new Date().toISOString(),
-          submissions: [],
-        };
-        return newRequirement;
-      }
-      // const { data } = await api.post('/requirements', requirement);
-      // return data;
-      throw new Error('Backend not implemented');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['requirements'] });
+  const createMutation = useMutation({
+    mutationFn: (data: CreateRequirementRequest) => requirementService.createRequirement(data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['requirements', variables.classId] });
       toast.success('Exigence créée avec succès !');
     },
-    onError: () => {
-      toast.error('Erreur lors de la création');
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la création';
+      toast.error(message);
     },
   });
+
+  return {
+    createRequirement: createMutation.mutate,
+    isCreating: createMutation.isPending,
+  };
+};
+
+export const useUpdateRequirement = (requirementId: string) => {
+  const queryClient = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: (data: UpdateRequirementRequest) =>
+      requirementService.updateRequirement(requirementId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requirements', requirementId] });
+      toast.success('Exigence mise à jour !');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
+      toast.error(message);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => requirementService.deleteRequirement(requirementId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requirements'] });
+      toast.success('Exigence supprimée !');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la suppression';
+      toast.error(message);
+    },
+  });
+
+  return {
+    updateRequirement: updateMutation.mutate,
+    isUpdating: updateMutation.isPending,
+    deleteRequirement: deleteMutation.mutate,
+    isDeleting: deleteMutation.isPending,
+  };
+};
+
+// Hook for submitting a requirement (student side)
+export const useSubmitRequirement = () => {
+  const queryClient = useQueryClient();
+
+  const submitMutation = useMutation({
+    mutationFn: ({ requirementId, file }: { requirementId: string; file: File }) =>
+      requirementService.submitRequirement(requirementId, file),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['requirements', variables.requirementId, 'submissions']
+      });
+      queryClient.invalidateQueries({ queryKey: ['requirements'] });
+      toast.success('Document soumis avec succès !');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la soumission';
+      toast.error(message);
+    },
+  });
+
+  return submitMutation;
 };

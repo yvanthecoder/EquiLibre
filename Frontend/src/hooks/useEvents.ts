@@ -1,55 +1,74 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Event } from '../types/api';
-// import api from '../lib/api';
-import { getMockEventsForUser, getCurrentMockUser } from '../lib/mockData';
+import { Event, CreateEventRequest } from '../types/api';
+import { classService } from '../services/api.service';
 import toast from 'react-hot-toast';
 
-// Mock mode flag
-const USE_MOCK_DATA = true;
-
 export const useEvents = (classId?: string) => {
-  return useQuery({
+  const { data: events, isLoading } = useQuery({
     queryKey: ['events', classId],
-    queryFn: async (): Promise<Event[]> => {
-      if (USE_MOCK_DATA) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const currentUser = getCurrentMockUser();
-        return getMockEventsForUser(currentUser);
-      }
-      // const { data } = await api.get(`/classes/${classId}/events`);
-      // return data;
-      return [];
-    },
+    queryFn: () => classService.getClassEvents(classId!),
     enabled: !!classId,
   });
+
+  return {
+    events,
+    isLoading,
+  };
 };
 
-export const useCreateEvent = () => {
+export const useCreateEvent = (classId: string) => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (event: Omit<Event, 'id'>) => {
-      if (USE_MOCK_DATA) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const newEvent: Event = {
-          ...event,
-          id: 'event_' + Date.now(),
-        };
-        return newEvent;
-      }
-      // const { data } = await api.post(`/classes/${event.classId}/events`, event);
-      // return data;
-      throw new Error('Backend not implemented');
-    },
+  const createMutation = useMutation({
+    mutationFn: (eventData: CreateEventRequest) => classService.createEvent(classId, eventData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['events', classId] });
       toast.success('Événement créé avec succès !');
     },
-    onError: () => {
-      toast.error('Erreur lors de la création');
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la création';
+      toast.error(message);
     },
   });
+
+  return {
+    createEvent: createMutation.mutate,
+    isCreating: createMutation.isPending,
+  };
+};
+
+export const useUpdateEvent = (classId: string, eventId: string) => {
+  const queryClient = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: (updates: Partial<CreateEventRequest>) =>
+      classService.updateEvent(classId, eventId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events', classId] });
+      toast.success('Événement mis à jour !');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
+      toast.error(message);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => classService.deleteEvent(classId, eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events', classId] });
+      toast.success('Événement supprimé !');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la suppression';
+      toast.error(message);
+    },
+  });
+
+  return {
+    updateEvent: updateMutation.mutate,
+    isUpdating: updateMutation.isPending,
+    deleteEvent: deleteMutation.mutate,
+    isDeleting: deleteMutation.isPending,
+  };
 };

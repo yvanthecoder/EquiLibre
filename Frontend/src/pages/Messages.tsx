@@ -1,193 +1,230 @@
-import React, { useState } from 'react';
-import { useThreads, useMessages, useSendMessage } from '../hooks/useMessages';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { messageService } from '../services/api.service';
+import { useAuth } from '../hooks/useAuth';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
-import { ChatBubbleLeftRightIcon, PaperAirplaneIcon, UserGroupIcon } from '@heroicons/react/24/outline';
-import { format } from 'date-fns';
+import { NewMessageModal } from '../components/messages/NewMessageModal';
+import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import toast from 'react-hot-toast';
+
+interface Conversation {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  last_message_at: string;
+  last_read_at: string;
+  participants: Array<{
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    profile_picture: string | null;
+    role: string;
+  }>;
+  last_message: {
+    id: number;
+    content: string;
+    sender_id: number;
+    created_at: string;
+    sender_firstname: string;
+    sender_lastname: string;
+  } | null;
+  unread_count: number;
+}
 
 export const Messages: React.FC = () => {
-  const { data: threads, isLoading: threadsLoading } = useThreads();
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [newMessage, setNewMessage] = useState('');
-  
-  const { data: messages, isLoading: messagesLoading } = useMessages(selectedThreadId || '');
-  const sendMessage = useSendMessage();
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const selectedThread = threads?.find(t => t.id === selectedThreadId);
+  useEffect(() => {
+    fetchConversations();
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newMessage.trim() && selectedThreadId) {
-      sendMessage.mutate(
-        { threadId: selectedThreadId, content: newMessage.trim() },
-        {
-          onSuccess: () => {
-            setNewMessage('');
-          },
-        }
-      );
+    // Auto-refresh every 10 seconds for near real-time updates
+    const interval = setInterval(() => {
+      fetchConversations();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [refreshKey]);
+
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+      const data = await messageService.getConversations();
+      setConversations(data);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      toast.error('Impossible de charger les conversations');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (threadsLoading) {
+  const getOtherParticipants = (conversation: Conversation) => {
+    return conversation.participants || [];
+  };
+
+  const getConversationTitle = (conversation: Conversation) => {
+    const participants = getOtherParticipants(conversation);
+    if (participants.length === 0) return 'Conversation';
+    if (participants.length === 1) {
+      return `${participants[0].firstname} ${participants[0].lastname}`;
+    }
+    return `${participants[0].firstname} ${participants[0].lastname} et ${participants.length - 1} autre(s)`;
+  };
+
+  const getInitials = (conversation: Conversation) => {
+    const participants = getOtherParticipants(conversation);
+    if (participants.length === 0) return '?';
+    const first = participants[0];
+    return `${first.firstname.charAt(0)}${first.lastname.charAt(0)}`;
+  };
+
+  const formatTime = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), {
+        addSuffix: true,
+        locale: fr
+      });
+    } catch {
+      return '';
+    }
+  };
+
+  if (loading && conversations.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement des conversations...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-        <p className="text-gray-600">
-          Communiquez avec vos enseignants et camarades
-        </p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Messagerie</h1>
+          <p className="text-gray-600 mt-1">
+            {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <Button onClick={() => setIsNewMessageModalOpen(true)}>
+          <span className="mr-2">+</span>
+          Nouveau message
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
-        {/* Threads List */}
-        <Card className="overflow-hidden">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Conversations</h2>
-              <Button size="sm">
-                <ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />
-                Nouveau
-              </Button>
-            </div>
+      {/* Conversations List */}
+      {conversations.length === 0 ? (
+        <Card className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <svg
+              className="w-16 h-16 mx-auto"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
           </div>
-          
-          <div className="overflow-y-auto h-full">
-            {threads?.length ? (
-              <div className="divide-y divide-gray-200">
-                {threads.map(thread => (
-                  <div
-                    key={thread.id}
-                    onClick={() => setSelectedThreadId(thread.id)}
-                    className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      selectedThreadId === thread.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-medium text-gray-900 truncate">{thread.title}</h3>
-                      {thread.lastMessage && (
-                        <span className="text-xs text-gray-500 ml-2">
-                          {format(new Date(thread.updatedAt), 'dd/MM', { locale: fr })}
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Aucune conversation
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Commencez une nouvelle conversation en cliquant sur le bouton ci-dessus
+          </p>
+          <Button onClick={() => setIsNewMessageModalOpen(true)}>
+            Démarrer une conversation
+          </Button>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {conversations.map((conversation) => (
+            <Link
+              key={conversation.id}
+              to={`/messages/${conversation.id}`}
+              className="block"
+            >
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <div className="flex items-start space-x-4">
+                  {/* Avatar */}
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-semibold">
+                        {getInitials(conversation)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-base font-semibold text-gray-900 truncate">
+                        {getConversationTitle(conversation)}
+                      </h3>
+                      {conversation.last_message && (
+                        <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                          {formatTime(conversation.last_message.created_at)}
                         </span>
                       )}
                     </div>
-                    
-                    <div className="flex items-center text-sm text-gray-600 mb-2">
-                      <UserGroupIcon className="h-4 w-4 mr-1" />
-                      {thread.participants.length} participant(s)
-                    </div>
-                    
-                    {thread.lastMessage && (
-                      <p className="text-sm text-gray-600 truncate">
-                        {thread.lastMessage.sender.firstName}: {thread.lastMessage.content}
+
+                    {conversation.last_message ? (
+                      <p className={`text-sm truncate ${
+                        conversation.unread_count > 0
+                          ? 'text-gray-900 font-medium'
+                          : 'text-gray-600'
+                      }`}>
+                        {conversation.last_message.sender_id === parseInt(user?.id || '0')
+                          ? 'Vous: '
+                          : `${conversation.last_message.sender_firstname}: `}
+                        {conversation.last_message.content}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">
+                        Aucun message
                       </p>
                     )}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-8 text-center">
-                <ChatBubbleLeftRightIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Aucune conversation</p>
-              </div>
-            )}
-          </div>
-        </Card>
 
-        {/* Messages */}
-        <div className="lg:col-span-2">
-          {selectedThread ? (
-            <Card className="h-full flex flex-col">
-              {/* Thread Header */}
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">{selectedThread.title}</h2>
-                <div className="flex items-center text-sm text-gray-600 mt-1">
-                  <UserGroupIcon className="h-4 w-4 mr-1" />
-                  {selectedThread.participants.map(p => `${p.firstName} ${p.lastName}`).join(', ')}
-                </div>
-              </div>
-
-              {/* Messages List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messagesLoading ? (
-                  <div className="flex items-center justify-center h-32">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-                  </div>
-                ) : messages?.length ? (
-                  messages.map(message => (
-                    <div key={message.id} className="flex space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-700">
-                            {message.sender.firstName[0]}{message.sender.lastName[0]}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium text-gray-900">
-                            {message.sender.firstName} {message.sender.lastName}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {format(new Date(message.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
-                          </span>
-                        </div>
-                        <div className="bg-gray-100 rounded-lg p-3">
-                          <p className="text-gray-900">{message.content}</p>
-                        </div>
-                      </div>
+                  {/* Unread Badge */}
+                  {conversation.unread_count > 0 && (
+                    <div className="flex-shrink-0">
+                      <span className="inline-flex items-center justify-center w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full">
+                        {conversation.unread_count > 9 ? '9+' : conversation.unread_count}
+                      </span>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">Aucun message dans cette conversation</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Message Input */}
-              <div className="p-4 border-t border-gray-200">
-                <form onSubmit={handleSendMessage} className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Tapez votre message..."
-                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={!newMessage.trim() || sendMessage.isPending}
-                    isLoading={sendMessage.isPending}
-                  >
-                    <PaperAirplaneIcon className="h-4 w-4" />
-                  </Button>
-                </form>
-              </div>
-            </Card>
-          ) : (
-            <Card className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <ChatBubbleLeftRightIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Sélectionnez une conversation
-                </h3>
-                <p className="text-gray-600">
-                  Choisissez une conversation dans la liste pour commencer à échanger
-                </p>
-              </div>
-            </Card>
-          )}
+                  )}
+                </div>
+              </Card>
+            </Link>
+          ))}
         </div>
-      </div>
+      )}
+
+      {/* New Message Modal */}
+      <NewMessageModal
+        isOpen={isNewMessageModalOpen}
+        onClose={() => {
+          setIsNewMessageModalOpen(false);
+          // Refresh conversations after modal closes
+          setRefreshKey(prev => prev + 1);
+        }}
+      />
     </div>
   );
 };

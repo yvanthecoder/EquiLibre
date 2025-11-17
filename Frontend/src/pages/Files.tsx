@@ -75,7 +75,7 @@ export const Files: React.FC = () => {
   const getFileIcon = (type: string) => {
     if (type.includes('pdf')) return '📄';
     if (type.includes('word') || type.includes('document')) return '📝';
-    if (type.includes('presentation')) return '📊';
+    if (type.includes('presentation')) return ' ';
     if (type.includes('zip') || type.includes('archive')) return '📦';
     return '📄';
   };

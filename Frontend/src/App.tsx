@@ -6,16 +6,27 @@ import { Toaster } from 'react-hot-toast';
 import { Layout } from './components/Layout/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
-// Pages
+// Auth Pages
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+
+// Main Pages
 import { Dashboard } from './pages/Dashboard';
 import { Requirements } from './pages/Requirements';
+import { RequirementDetail } from './pages/RequirementDetail';
 import { Profile } from './pages/Profile';
 import { Class } from './pages/Class';
 import { Files } from './pages/Files';
 import { Calendar } from './pages/Calendar';
 import { Messages } from './pages/Messages';
+import { MessageThread } from './pages/MessageThread';
+
+// Admin Pages
+import { AdminRequirements } from './pages/admin/AdminRequirements';
+import { AdminCalendar } from './pages/admin/AdminCalendar';
+import { AdminUsers } from './pages/admin/AdminUsers';
+import { AdminClasses } from './pages/admin/AdminClasses';
+import { AdminAssignments } from './pages/admin/AdminAssignments';
 
 // Create query client
 const queryClient = new QueryClient({
@@ -23,6 +34,7 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
       refetchOnWindowFocus: false,
+      retry: 1,
     },
   },
 });
@@ -48,7 +60,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* Requirements */}
             <Route
               path="/requirements"
               element={
@@ -59,7 +72,18 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+            <Route
+              path="/requirements/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <RequirementDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Profile & Class */}
             <Route
               path="/profile"
               element={
@@ -70,9 +94,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
             <Route
-              path="/class"
+              path="/class/:id/members"
               element={
                 <ProtectedRoute>
                   <Layout>
@@ -81,7 +104,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* Files */}
             <Route
               path="/files"
               element={
@@ -92,7 +116,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* Calendar */}
             <Route
               path="/calendar"
               element={
@@ -103,7 +128,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* Messages */}
             <Route
               path="/messages"
               element={
@@ -114,10 +140,72 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/messages/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <MessageThread />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admin Routes */}
+            <Route
+              path="/admin/classes"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'RESP_PLATEFORME', 'TUTEUR_ECOLE']}>
+                  <Layout>
+                    <AdminClasses />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/assignments"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'RESP_PLATEFORME']}>
+                  <Layout>
+                    <AdminAssignments />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/requirements"
+              element={
+                <ProtectedRoute allowedRoles={['RESP_PLATEFORME', 'TUTEUR', 'MAITRE_APP']}>
+                  <Layout>
+                    <AdminRequirements />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/calendar"
+              element={
+                <ProtectedRoute allowedRoles={['RESP_PLATEFORME', 'TUTEUR', 'MAITRE_APP']}>
+                  <Layout>
+                    <AdminCalendar />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute allowedRoles={['RESP_PLATEFORME']}>
+                  <Layout>
+                    <AdminUsers />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
+
             {/* Catch all - redirect to dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
