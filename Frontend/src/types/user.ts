@@ -1,30 +1,52 @@
-export type UserRole = 'ALTERNANT' | 'ETUDIANT' | 'TUTEUR' | 'MAITRE_APP' | 'RESP_PLATEFORME';
+/**
+ * Types TypeScript pour l'application EquiLibre
+ */
 
+// Les 5 rôles de l'application
+export type UserRole =
+  | 'ALTERNANT'
+  | 'ETUDIANT_CLASSIQUE'
+  | 'MAITRE_APP'
+  | 'TUTEUR_ECOLE'
+  | 'ADMIN';
+
+// Interface User
 export interface User {
-  id: string;
+  id: number;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstname: string;
+  lastname: string;
   role: UserRole;
-  avatar?: string;
-  classId?: string;
-  createdAt: string;
+  company?: string | null;
+  phone?: string | null;
+  profile_picture?: string | null;
+  created_at?: string;
+  last_login?: string;
+  is_active?: boolean;
+  is_verified?: boolean;
 }
 
-export interface AuthTokens {
-  access_token: string;
-  refresh_token: string;
+// Interface pour la réponse de login
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+  data: {
+    token: string;
+    user: User;
+  };
 }
 
-export interface LoginRequest {
-  email: string;
-  password: string;
+// Interface pour la réponse d'API générique
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  error?: string;
 }
 
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole;
+// Interface pour les erreurs API
+export interface ApiError {
+  success: false;
+  message: string;
+  detail?: string;
 }

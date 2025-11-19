@@ -63,3 +63,90 @@ export interface Class {
   members: User[];
   instructors: User[];
 }
+
+export interface File {
+  id: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  fileType: string;
+  userId: string;
+  classId?: string;
+  uploadedAt: string;
+}
+
+export interface CreateRequirementRequest {
+  title: string;
+  description: string;
+  dueDate: string;
+  classId: string;
+}
+
+export interface UpdateRequirementRequest {
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  status?: 'PENDING' | 'SUBMITTED' | 'VALIDATED' | 'REJECTED' | 'LOCKED';
+}
+
+export interface CreateEventRequest {
+  title: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  classId: string;
+  type: 'COURSE' | 'EXAM' | 'DEADLINE' | 'MEETING';
+}
+
+export interface CreateThreadRequest {
+  title: string;
+  participantIds: string[];
+  initialMessage: string;
+}
+
+export interface SendMessageRequest {
+  threadId: string;
+  content: string;
+}
+
+export interface UpdateUserRequest {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  avatar?: string;
+}
+
+export type UserRole = 'ALTERNANT' | 'ETUDIANT_CLASSIQUE' | 'TUTEUR_ECOLE' | 'MAITRE_APP' | 'ADMIN';
+
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  avatar?: string;
+  classId?: string;
+  createdAt: string;
+}
+
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  company?: string;
+  phone?: string;
+  jobTitle?: string;
+  classId?: string;
+}

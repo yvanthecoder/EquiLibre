@@ -1,183 +1,130 @@
--- ============================================
---   Base de données : equilibre_db
---   Projet : EquiLibre (Apprentissage)
--- ============================================
+-- =============================================
+-- SCHEMA POSTGRES - EQUILIBRE
+-- =============================================
 
-CREATE DATABASE IF NOT EXISTS equilibre_db;
-USE equilibre_db;
+-- Nettoyage
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS requirements CASCADE;
+DROP TABLE IF EXISTS class_members CASCADE;
+DROP TABLE IF EXISTS classes CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TYPE IF EXISTS user_role CASCADE;
+DROP TYPE IF EXISTS requirement_status CASCADE;
 
--- ============================
--- TABLE : Utilisateur
--- ============================
-CREATE TABLE utilisateur (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nom VARCHAR(100),
-    prenom VARCHAR(100),
-    email VARCHAR(150) UNIQUE,
-    mot_de_passe VARCHAR(255)
+-- ENUM ROLES
+CREATE TYPE user_role AS ENUM (
+    'ALTERNANT',
+    'ETUDIANT_CLASSIQUE',
+    'MAITRE_APP',
+    'TUTEUR_ECOLE',
+    'ADMIN'
 );
 
--- ============================
--- TABLE : Promotion
--- ============================
-CREATE TABLE promotion (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    annee VARCHAR(20),
-    nom VARCHAR(100)
+-- ENUM STATUT REQUIREMENTS
+CREATE TYPE requirement_status AS ENUM (
+    'PENDING',
+    'APPROVED',
+    'REJECTED'
 );
 
--- ============================
--- TABLE : Apprenti
--- ============================
-CREATE TABLE apprenti (
-    id INT PRIMARY KEY,
-    promotion_id INT,
-    FOREIGN KEY (id) REFERENCES utilisateur(id) ON DELETE CASCADE,
-    FOREIGN KEY (promotion_id) REFERENCES promotion(id)
+-- USERS
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    firstname VARCHAR(100) NOT NULL,
+    lastname VARCHAR(100) NOT NULL,
+    role user_role NOT NULL,
+    company VARCHAR(255),
+    phone VARCHAR(20),
+    profile_picture TEXT,
+    google_id VARCHAR(255) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP,
+    is_active BOOLEAN DEFAULT true,
+    is_verified BOOLEAN DEFAULT false
 );
 
--- ============================
--- TABLE : Entreprise
--- ============================
-CREATE TABLE entreprise (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nom VARCHAR(150),
-    adresse VARCHAR(255),
-    siret VARCHAR(20)
-);
-
--- ============================
--- TABLE : Maître d’Apprentissage
--- ============================
-CREATE TABLE maitre_apprentissage (
-    id INT PRIMARY KEY,
-    entreprise_id INT,
-    FOREIGN KEY (id) REFERENCES utilisateur(id) ON DELETE CASCADE,
-    FOREIGN KEY (entreprise_id) REFERENCES entreprise(id)
-);
-
--- ============================
--- TABLE : Tuteur Pédagogique
--- ============================
-CREATE TABLE tuteur_pedagogique (
-    id INT PRIMARY KEY,
-    FOREIGN KEY (id) REFERENCES utilisateur(id) ON DELETE CASCADE
-);
-
--- ============================
--- TABLE : Journal de Formation
--- ============================
-CREATE TABLE journal_formation (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    apprenti_id INT,
-    date_creation DATE,
-    FOREIGN KEY (apprenti_id) REFERENCES apprenti(id) ON DELETE CASCADE
-);
-
--- ============================
--- TABLE : Activité du Journal
--- ============================
-CREATE TABLE activite (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    journal_id INT,
+-- CLASSES
+CREATE TABLE classes (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
-    date_realisation DATE,
-    FOREIGN KEY (journal_id) REFERENCES journal_formation(id) ON DELETE CASCADE
+    year VARCHAR(10) NOT NULL,
+    level VARCHAR(50),
+    tuteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT true
 );
 
--- ============================
--- TABLE : Note Mensuelle
--- ============================
-CREATE TABLE note_mensuelle (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    apprenti_id INT,
-    mois VARCHAR(20),
-    annee INT,
-    note FLOAT,
-    commentaires TEXT,
-    date_depot DATE,
-    FOREIGN KEY (apprenti_id) REFERENCES apprenti(id) ON DELETE CASCADE
+-- CLASS MEMBERS
+CREATE TABLE class_members (
+    id SERIAL PRIMARY KEY,
+    class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (class_id, user_id)
 );
 
--- ============================
--- TABLE : Fiche Synthèse
--- ============================
-CREATE TABLE fiche_synthese (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    apprenti_id INT,
-    semestre VARCHAR(20),
-    contenu TEXT,
-    date_depot DATE,
-    FOREIGN KEY (apprenti_id) REFERENCES apprenti(id) ON DELETE CASCADE
+-- REQUIREMENTS
+CREATE TABLE requirements (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    deadline TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status requirement_status DEFAULT 'PENDING',
+    validated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    validated_at TIMESTAMP,
+    validation_comment TEXT
 );
 
--- ============================
--- TABLE : Rapport
--- ============================
-CREATE TABLE rapport (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    apprenti_id INT,
-    type VARCHAR(50),
-    semestre VARCHAR(20),
-    date_depot DATE,
-    fichier VARCHAR(255),
-    FOREIGN KEY (apprenti_id) REFERENCES apprenti(id) ON DELETE CASCADE
+-- NOTIFICATIONS
+CREATE TABLE notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) DEFAULT 'info',
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    link TEXT,
+    metadata JSONB
 );
 
--- ============================
--- TABLE : Slide Présentation
--- ============================
-CREATE TABLE slide_presentation (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    apprenti_id INT,
-    type VARCHAR(50),
-    semestre VARCHAR(20),
-    date_depot DATE,
-    fichier VARCHAR(255),
-    FOREIGN KEY (apprenti_id) REFERENCES apprenti(id) ON DELETE CASCADE
+-- MESSAGES
+CREATE TABLE messages (
+    id SERIAL PRIMARY KEY,
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject VARCHAR(255),
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    read_at TIMESTAMP,
+    thread_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================
--- TABLE : Jury
--- ============================
-CREATE TABLE jury (
-    id INT AUTO_INCREMENT PRIMARY KEY
-);
+-- TRIGGER updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- ============================
--- TABLE pivot : Membres du Jury
--- ============================
-CREATE TABLE jury_membre (
-    jury_id INT,
-    utilisateur_id INT,
-    PRIMARY KEY (jury_id, utilisateur_id),
-    FOREIGN KEY (jury_id) REFERENCES jury(id) ON DELETE CASCADE,
-    FOREIGN KEY (utilisateur_id) REFERENCES utilisateur(id) ON DELETE CASCADE
-);
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- ============================
--- TABLE : Soutenance
--- ============================
-CREATE TABLE soutenance (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    date_soutenance DATE,
-    heure TIME,
-    lieu VARCHAR(255),
-    jury_id INT,
-    apprenti_id INT,
-    FOREIGN KEY (jury_id) REFERENCES jury(id) ON DELETE SET NULL,
-    FOREIGN KEY (apprenti_id) REFERENCES apprenti(id) ON DELETE CASCADE
-);
+CREATE TRIGGER update_classes_updated_at BEFORE UPDATE ON classes
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- ============================
--- TABLE : Entretien Semestriel
--- ============================
-CREATE TABLE entretien_semestriel (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    date_entretien DATE,
-    compte_rendu TEXT,
-    apprenti_id INT,
-    FOREIGN KEY (apprenti_id) REFERENCES apprenti(id) ON DELETE CASCADE
-);
-
--- FIN DU SCRIPT
+CREATE TRIGGER update_requirements_updated_at BEFORE UPDATE ON requirements
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

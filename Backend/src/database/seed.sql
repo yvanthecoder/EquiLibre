@@ -1,167 +1,54 @@
-USE equilibre_db;
+-- RESET
+TRUNCATE TABLE messages CASCADE;
+TRUNCATE TABLE notifications CASCADE;
+TRUNCATE TABLE requirements CASCADE;
+TRUNCATE TABLE class_members CASCADE;
+TRUNCATE TABLE classes CASCADE;
+TRUNCATE TABLE users CASCADE;
 
--- =========================================================
--- 1. UTILISATEURS (TUTEURS, MAITRES, APPRENTIS, AUTRES)
--- =========================================================
+ALTER SEQUENCE users_id_seq RESTART WITH 1;
+ALTER SEQUENCE classes_id_seq RESTART WITH 1;
+ALTER SEQUENCE class_members_id_seq RESTART WITH 1;
+ALTER SEQUENCE requirements_id_seq RESTART WITH 1;
+ALTER SEQUENCE notifications_id_seq RESTART WITH 1;
+ALTER SEQUENCE messages_id_seq RESTART WITH 1;
 
-INSERT INTO utilisateur (nom, prenom, email, mot_de_passe) VALUES
-('Martin', 'Lucas', 'lucas.martin@example.com', 'hash123'),
-('Durand', 'Emma', 'emma.durand@example.com', 'hash123'),
-('Bernard', 'Hugo', 'hugo.bernard@example.com', 'hash123'),
-('Moreau', 'Lina', 'lina.moreau@example.com', 'hash123'),
-('Petit', 'Arthur', 'arthur.petit@example.com', 'hash123'),
-('Garnier', 'Sarah', 'sarah.garnier@example.com', 'hash123'),
-('Roux', 'Nicolas', 'nicolas.roux@example.com', 'hash123'),
-('Baron', 'Chloe', 'chloe.baron@example.com', 'hash123'),
-('Fabre', 'Paul', 'paul.fabre@example.com', 'hash123'),
-('Carpentier', 'Alice', 'alice.carpentier@example.com', 'hash123');
+-- ADMIN
+INSERT INTO users (email, password, firstname, lastname, role, is_verified)
+VALUES ('admin@equilibre.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Admin', 'Plateforme', 'ADMIN', true);
 
--- 10 utilisateurs créés : 4 apprentis, 3 tuteurs, 3 maîtres
+-- TUTEURS
+INSERT INTO users (email, password, firstname, lastname, role, phone, is_verified) VALUES
+('tuteur1@equilibre.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Marie', 'Dupont', 'TUTEUR_ECOLE', '0601020304', true),
+('tuteur2@equilibre.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Pierre', 'Martin', 'TUTEUR_ECOLE', '0602030405', true);
 
--- =========================================================
--- 2. PROMOTIONS
--- =========================================================
+-- MAITRES
+INSERT INTO users (email, password, firstname, lastname, role, company, phone, is_verified) VALUES
+('maitre1@entreprise.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Jean', 'Dubois', 'MAITRE_APP', 'Tech Corp', '0603040506', true),
+('maitre2@entreprise.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Sophie', 'Bernard', 'MAITRE_APP', 'Innovation SA', '0604050607', true);
 
-INSERT INTO promotion (annee, nom) VALUES
-('2024-2025', 'Promo A'),
-('2025-2026', 'Promo B');
+-- ALTERNANTS
+INSERT INTO users (email, password, firstname, lastname, role, company, is_verified) VALUES
+('alternant1@student.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Lucas', 'Petit', 'ALTERNANT', 'Tech Corp', true),
+('alternant2@student.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Emma', 'Roux', 'ALTERNANT', 'Innovation SA', true);
 
--- =========================================================
--- 3. APPRENTIS (id = utilisateur.id)
--- =========================================================
+-- ÉTUDIANTS CLASSIQUES
+INSERT INTO users (email, password, firstname, lastname, role, is_verified) VALUES
+('etudiant1@student.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Julie', 'Moreau', 'ETUDIANT_CLASSIQUE', true),
+('etudiant2@student.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Thomas', 'Simon', 'ETUDIANT_CLASSIQUE', true);
 
-INSERT INTO apprenti (id, promotion_id) VALUES
-(1, 1),
-(2, 1),
-(3, 2),
-(4, 2);
+-- CLASSES
+INSERT INTO classes (name, description, year, level, tuteur_id) VALUES
+('Master 1 SIGL - Groupe A', 'Première année du Master SIGL - Groupe A', '2024-2025', 'M1', 2),
+('Master 2 SIGL - Groupe B', 'Deuxième année du Master SIGL - Groupe B', '2024-2025', 'M2', 3);
 
--- =========================================================
--- 4. ENTREPRISES
--- =========================================================
+-- MEMBERS
+INSERT INTO class_members (class_id, user_id) VALUES
+(1, 6), (1, 8),
+(2, 7), (2, 9);
 
-INSERT INTO entreprise (nom, adresse, siret) VALUES
-('TechVision', '12 rue des Lilas, Paris', '55239876100014'),
-('InnovAction', '27 avenue Victor Hugo, Lyon', '48923716500058'),
-('GreenFuture', '5 impasse des Fleurs, Marseille', '43988761200032');
-
--- =========================================================
--- 5. MAITRES D’APPRENTISSAGE (id = utilisateur.id)
--- =========================================================
-
-INSERT INTO maitre_apprentissage (id, entreprise_id) VALUES
-(5, 1),
-(6, 2),
-(7, 3);
-
--- =========================================================
--- 6. TUTEURS PÉDAGOGIQUES (id = utilisateur.id)
--- =========================================================
-
-INSERT INTO tuteur_pedagogique (id) VALUES
-(8),
-(9),
-(10);
-
--- =========================================================
--- 7. JOURNAUX DE FORMATION
--- =========================================================
-
-INSERT INTO journal_formation (apprenti_id, date_creation) VALUES
-(1, '2025-01-05'),
-(2, '2025-01-10'),
-(3, '2025-01-12'),
-(4, '2025-01-20');
-
--- =========================================================
--- 8. ACTIVITÉS DU JOURNAL
--- =========================================================
-
-INSERT INTO activite (journal_id, description, date_realisation) VALUES
-(1, 'Développement d’un module React', '2025-01-07'),
-(1, 'Mise en place d’une API Node', '2025-01-08'),
-(2, 'Analyse de logs serveurs', '2025-01-11'),
-(3, 'Optimisation d’une base SQL', '2025-01-15'),
-(4, 'Création d’un dashboard frontend', '2025-01-25');
-
--- =========================================================
--- 9. NOTES MENSUELLES
--- =========================================================
-
-INSERT INTO note_mensuelle (apprenti_id, mois, annee, note, commentaires, date_depot) VALUES
-(1, 'Janvier', 2025, 16.5, 'Très bonne progression', '2025-02-01'),
-(2, 'Janvier', 2025, 14.0, 'Bon travail mais manque de rigueur', '2025-02-01'),
-(3, 'Janvier', 2025, 15.2, 'Bonne autonomie', '2025-02-03'),
-(4, 'Janvier', 2025, 13.7, 'Doit approfondir certaines notions', '2025-02-05');
-
--- =========================================================
--- 10. FICHES SYNTHÈSE
--- =========================================================
-
-INSERT INTO fiche_synthese (apprenti_id, semestre, contenu, date_depot) VALUES
-(1, 'S1', 'Synthèse des acquis du semestre 1', '2025-02-10'),
-(2, 'S1', 'Rapport détaillé des missions effectuées', '2025-02-12'),
-(3, 'S1', 'Retour sur les compétences acquises', '2025-02-15'),
-(4, 'S1', 'Missions diverses chez l’entreprise', '2025-02-20');
-
--- =========================================================
--- 11. RAPPORTS
--- =========================================================
-
-INSERT INTO rapport (apprenti_id, type, semestre, date_depot, fichier) VALUES
-(1, 'Rapport intermédiaire', 'S1', '2025-02-18', 'rapport_1.pdf'),
-(2, 'Rapport intermédiaire', 'S1', '2025-02-20', 'rapport_2.pdf'),
-(3, 'Rapport final', 'S1', '2025-02-22', 'rapport_3.pdf'),
-(4, 'Rapport final', 'S1', '2025-02-23', 'rapport_4.pdf');
-
--- =========================================================
--- 12. SLIDES DE PRÉSENTATION
--- =========================================================
-
-INSERT INTO slide_presentation (apprenti_id, type, semestre, date_depot, fichier) VALUES
-(1, 'Soutenance S1', 'S1', '2025-02-25', 'slides_1.pdf'),
-(2, 'Soutenance S1', 'S1', '2025-02-26', 'slides_2.pdf'),
-(3, 'Soutenance S1', 'S1', '2025-02-27', 'slides_3.pdf'),
-(4, 'Soutenance S1', 'S1', '2025-02-28', 'slides_4.pdf');
-
--- =========================================================
--- 13. JURY
--- =========================================================
-
-INSERT INTO jury VALUES
-(1),
-(2);
-
--- =========================================================
--- 14. MEMBRES DU JURY
--- =========================================================
-
-INSERT INTO jury_membre (jury_id, utilisateur_id) VALUES
-(1, 8),
-(1, 9),
-(2, 10),
-(2, 5);
-
--- =========================================================
--- 15. SOUTENANCES
--- =========================================================
-
-INSERT INTO soutenance (date_soutenance, heure, lieu, jury_id, apprenti_id) VALUES
-('2025-03-10', '14:00', 'Salle 101', 1, 1),
-('2025-03-11', '10:00', 'Salle 102', 1, 2),
-('2025-03-12', '09:30', 'Salle 103', 2, 3),
-('2025-03-13', '11:00', 'Salle 104', 2, 4);
-
--- =========================================================
--- 16. ENTRETIENS SEMESTRIELS
--- =========================================================
-
-INSERT INTO entretien_semestriel (date_entretien, compte_rendu, apprenti_id) VALUES
-('2025-01-15', 'Bon début d’année, apprentissage efficace.', 1),
-('2025-01-17', 'À encourager mais attention aux délais.', 2),
-('2025-01-20', 'Très bonne maîtrise technique.', 3),
-('2025-01-25', 'Axe d’amélioration sur la communication.', 4);
-
--- ===========================
--- FIN DU DATASET
--- ===========================
+-- REQUIREMENTS
+INSERT INTO requirements (title, description, class_id, created_by, deadline, status) VALUES
+('Rapport de stage - T1', 'Rédiger le rapport du trimestre 1', 1, 1, CURRENT_TIMESTAMP + INTERVAL '30 days', 'PENDING'),
+('Présentation finale', 'Préparer la soutenance finale', 2, 1, CURRENT_TIMESTAMP + INTERVAL '60 days', 'PENDING'),
+('Feuille de temps Septembre', 'Soumettre la feuille de temps', 1, 1, CURRENT_TIMESTAMP + INTERVAL '7 days', 'APPROVED');

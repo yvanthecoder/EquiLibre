@@ -101,7 +101,10 @@ export const Profile: React.FC = () => {
                   Membre depuis
                 </label>
                 <p className="text-gray-900">
-                  {format(new Date(user.createdAt), 'dd MMMM yyyy', { locale: fr })}
+                  {user.createdAt
+                    ? format(new Date(user.createdAt), 'dd MMMM yyyy', { locale: fr })
+                    : 'Date non disponible'
+                  }
                 </p>
               </div>
             </div>
