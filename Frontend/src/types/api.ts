@@ -114,6 +114,13 @@ export interface UpdateUserRequest {
   lastName?: string;
   email?: string;
   avatar?: string;
+  phone?: string;
+  company?: string;
+  jobTitle?: string;
+  classId?: string;
+  role?: UserRole;
+  isActive?: boolean;
+  password?: string;
 }
 
 export type UserRole = 'ALTERNANT' | 'ETUDIANT_CLASSIQUE' | 'TUTEUR_ECOLE' | 'MAITRE_APP' | 'ADMIN';
@@ -129,6 +136,7 @@ export interface User {
    phone?: string;
    company?: string;
    jobTitle?: string;
+  isActive?: boolean;
   createdAt: string;
 }
 

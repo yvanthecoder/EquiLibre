@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useEvents, useCreateEvent, useUpdateEvent } from '../../hooks/useEvents';
 import { Card } from '../../components/UI/Card';
@@ -10,31 +10,85 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { CreateEventRequest } from '../../types/api';
+import { useClassesList } from '../../hooks/useUsers';
+
+const toLocalInput = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
 
 export const AdminCalendar: React.FC = () => {
   const { user } = useAuth();
-  const { events, isLoading } = useEvents(user?.classId);
-  const { createEvent, isCreating } = useCreateEvent(user?.classId || '');
+  const { classes } = useClassesList();
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const { events, isLoading } = useEvents(selectedClassId);
+  const { createEvent, isCreating } = useCreateEvent(selectedClassId);
 
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-  const { updateEvent, deleteEvent } = useUpdateEvent(user?.classId || '', selectedEvent || '');
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const { updateEvent, deleteEvent, isDeleting, isUpdating } = useUpdateEvent(selectedClassId || '', selectedEvent?.id || '');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateEventRequest>();
 
+  useEffect(() => {
+    if (!selectedClassId && classes?.length) {
+      setSelectedClassId(classes[0].id);
+    } else if (!selectedClassId && user?.classId) {
+      setSelectedClassId(user.classId);
+    }
+  }, [classes, selectedClassId, user?.classId]);
+
+  const classOptions = useMemo(() => classes || [], [classes]);
+
   const onSubmit = (data: CreateEventRequest) => {
-    createEvent({
-      ...data,
-      classId: user?.classId || '',
-    });
-    setShowCreateModal(false);
-    reset();
+    if (!selectedClassId) return;
+
+    if (selectedEvent) {
+      updateEvent(
+        {
+          ...data,
+          classId: selectedClassId,
+        },
+        {
+          onSuccess: () => {
+            setShowCreateModal(false);
+            setSelectedEvent(null);
+            reset();
+          },
+        }
+      );
+    } else {
+      createEvent({
+        ...data,
+        classId: selectedClassId,
+      });
+      setShowCreateModal(false);
+      reset();
+    }
   };
 
   const handleDelete = (id: string) => {
+    if (!selectedClassId) return;
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
-      setSelectedEvent(id);
+      setSelectedEvent({ id });
       deleteEvent();
+    }
+  };
+
+  const handleEdit = (event: any) => {
+    setSelectedEvent(event);
+    setShowCreateModal(true);
+    reset({
+      title: event.title,
+      description: event.description,
+      startDate: toLocalInput(event.startDate),
+      endDate: toLocalInput(event.endDate),
+      type: event.type,
+      classId: event.classId,
+    });
+    if (event.classId) {
+      setSelectedClassId(event.classId);
     }
   };
 
@@ -73,9 +127,7 @@ export const AdminCalendar: React.FC = () => {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              // Show edit modal
-            }}
+            onClick={() => handleEdit(row)}
           >
             <PencilIcon className="h-4 w-4" />
           </Button>
@@ -83,6 +135,7 @@ export const AdminCalendar: React.FC = () => {
             size="sm"
             variant="danger"
             onClick={() => handleDelete(row.id)}
+            disabled={isDeleting}
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
@@ -94,15 +147,28 @@ export const AdminCalendar: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion du calendrier</h1>
-        <Button onClick={() => setShowCreateModal(true)}>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">Gestion du calendrier</h1>
+          <select
+            value={selectedClassId}
+            onChange={(e) => setSelectedClassId(e.target.value)}
+            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            {classOptions.map((cls: any) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button onClick={() => { setSelectedEvent(null); setShowCreateModal(true); }}>
           <PlusIcon className="h-5 w-5 mr-2" />
           Nouvel événement
         </Button>
       </div>
 
       <Card>
-        {isLoading ? (
+        {isLoading || !selectedClassId ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
@@ -115,14 +181,15 @@ export const AdminCalendar: React.FC = () => {
         )}
       </Card>
 
-      {/* Create Modal */}
+      {/* Create/Edit Modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => {
           setShowCreateModal(false);
           reset();
+          setSelectedEvent(null);
         }}
-        title="Créer un événement"
+        title={selectedEvent ? 'Modifier un événement' : 'Créer un événement'}
         size="lg"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -207,12 +274,13 @@ export const AdminCalendar: React.FC = () => {
               onClick={() => {
                 setShowCreateModal(false);
                 reset();
+                setSelectedEvent(null);
               }}
             >
               Annuler
             </Button>
-            <Button type="submit" isLoading={isCreating}>
-              Créer
+            <Button type="submit" isLoading={isCreating || isUpdating}>
+              {selectedEvent ? 'Mettre à jour' : 'Créer'}
             </Button>
           </div>
         </form>

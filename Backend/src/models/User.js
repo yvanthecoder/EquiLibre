@@ -83,7 +83,19 @@ class User {
 
     // Mettre à jour un utilisateur
     static async update(userId, updates) {
-        const allowedFields = ['firstname', 'lastname', 'phone', 'company', 'profile_picture', 'job_title', 'class_id', 'password'];
+        const allowedFields = [
+            'firstname',
+            'lastname',
+            'phone',
+            'company',
+            'profile_picture',
+            'job_title',
+            'class_id',
+            'password',
+            'role',
+            'email',
+            'is_active'
+        ];
         const fields = [];
         const values = [];
         let paramIndex = 1;
@@ -105,7 +117,7 @@ class User {
             UPDATE users
             SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
             WHERE id = $${paramIndex}
-            RETURNING id, email, firstname, lastname, role, company, phone, profile_picture, job_title, class_id
+            RETURNING id, email, firstname, lastname, role, company, phone, profile_picture, job_title, class_id, is_active
         `;
 
         const result = await query(sql, values);

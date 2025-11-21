@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+import api from '../../lib/api';
 
 interface Class {
   id: number;
@@ -43,13 +41,10 @@ export const AdminClasses: React.FC = () => {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/classes`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.data.success) {
-        setClasses(response.data.data);
-      }
+      const response = await api.get('/classes');
+      const payload = response.data;
+      const data = Array.isArray(payload) ? payload : payload.data || payload?.classes || [];
+      setClasses(data);
     } catch (err) {
       console.error('Error fetching classes:', err);
       setError('Impossible de charger les classes');
@@ -61,7 +56,6 @@ export const AdminClasses: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
       const payload = {
         name: formData.name,
         description: formData.description,
@@ -72,14 +66,10 @@ export const AdminClasses: React.FC = () => {
 
       if (editingClass) {
         // Update existing class
-        await axios.put(`${API_URL}/api/classes/${editingClass.id}`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.put(`/classes/${editingClass.id}`, payload);
       } else {
         // Create new class
-        await axios.post(`${API_URL}/api/classes`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post(`/classes`, payload);
       }
 
       // Reset form and refresh
@@ -109,10 +99,7 @@ export const AdminClasses: React.FC = () => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette classe ?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_URL}/api/classes/${classId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/classes/${classId}`);
       fetchClasses();
     } catch (err) {
       console.error('Error deleting class:', err);

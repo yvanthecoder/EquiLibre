@@ -1,4 +1,6 @@
+const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const ClassModel = require('../models/Class');
 const { ERROR_MESSAGES } = require('../config/constants');
 
 const mapUser = (user) => ({
@@ -73,8 +75,33 @@ const updateUser = async (req, res) => {
         if (body.phone !== undefined) updates.phone = body.phone;
         if (body.company !== undefined) updates.company = body.company;
         if (body.avatar !== undefined) updates.profile_picture = body.avatar;
-        if (body.classId !== undefined) updates.class_id = body.classId;
+        if (body.classId !== undefined) {
+            const newClassId = body.classId === null ? null : parseInt(body.classId, 10);
+            updates.class_id = newClassId;
+            const previous = await User.findById(userId);
+            if (previous?.class_id && previous.class_id !== newClassId) {
+                try {
+                    await ClassModel.removeMember(previous.class_id, userId);
+                } catch (err) {
+                    console.warn('Impossible de retirer l\'ancien rattachement classe:', err.message);
+                }
+            }
+            if (newClassId) {
+                try {
+                    await ClassModel.addMember(newClassId, userId);
+                } catch (err) {
+                    console.warn('Impossible d\'ajouter l\'utilisateur à la classe:', err.message);
+                }
+            }
+        }
         if (body.jobTitle !== undefined) updates.job_title = body.jobTitle;
+        if (body.role !== undefined) updates.role = body.role;
+        if (body.email !== undefined) updates.email = body.email;
+        if (body.isActive !== undefined) updates.is_active = body.isActive;
+
+        if (body.password !== undefined && body.password !== '') {
+            updates.password = await bcrypt.hash(body.password, 10);
+        }
 
         const updatedUser = await User.update(userId, updates);
 

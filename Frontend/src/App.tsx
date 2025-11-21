@@ -155,7 +155,7 @@ function App() {
             <Route
               path="/admin/classes"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'RESP_PLATEFORME', 'TUTEUR_ECOLE']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE']}>
                   <Layout>
                     <AdminClasses />
                   </Layout>
@@ -165,7 +165,7 @@ function App() {
             <Route
               path="/admin/assignments"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'RESP_PLATEFORME']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE']}>
                   <Layout>
                     <AdminAssignments />
                   </Layout>
@@ -175,7 +175,7 @@ function App() {
             <Route
               path="/admin/requirements"
               element={
-                <ProtectedRoute allowedRoles={['RESP_PLATEFORME', 'TUTEUR', 'MAITRE_APP']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE', 'MAITRE_APP']}>
                   <Layout>
                     <AdminRequirements />
                   </Layout>
@@ -185,7 +185,7 @@ function App() {
             <Route
               path="/admin/calendar"
               element={
-                <ProtectedRoute allowedRoles={['RESP_PLATEFORME', 'TUTEUR', 'MAITRE_APP']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE', 'MAITRE_APP']}>
                   <Layout>
                     <AdminCalendar />
                   </Layout>
@@ -195,7 +195,7 @@ function App() {
             <Route
               path="/admin/users"
               element={
-                <ProtectedRoute allowedRoles={['RESP_PLATEFORME']}>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <Layout>
                     <AdminUsers />
                   </Layout>

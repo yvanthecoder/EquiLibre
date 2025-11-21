@@ -16,15 +16,21 @@ export const useEvents = (classId?: string) => {
   };
 };
 
-export const useCreateEvent = () => {
+export const useCreateEvent = (defaultClassId?: string) => {
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
-    mutationFn: (payload: CreateEventRequest & { classId: string }) =>
-      classService.createEvent(payload.classId, payload),
+    mutationFn: (payload: CreateEventRequest & { classId?: string }) => {
+      const classId = payload.classId || defaultClassId;
+      if (!classId) {
+        throw new Error('Classe requise pour créer un événement');
+      }
+      return classService.createEvent(classId, { ...payload, classId });
+    },
     onSuccess: (data, variables) => {
+      const classId = variables.classId || defaultClassId || '';
       // push optimiste pour affichage immédiat
-      queryClient.setQueryData<Event[] | undefined>(['events', variables.classId], (old) => {
+      queryClient.setQueryData<Event[] | undefined>(['events', classId], (old) => {
         const next = (old || []).slice();
         next.push({
           id: data.id,
@@ -37,7 +43,9 @@ export const useCreateEvent = () => {
         });
         return next;
       });
-      queryClient.invalidateQueries({ queryKey: ['events', variables.classId] });
+      if (classId) {
+        queryClient.invalidateQueries({ queryKey: ['events', classId] });
+      }
       toast.success('Événement créé avec succès !');
     },
     onError: (error: any) => {

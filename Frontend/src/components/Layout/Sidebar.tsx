@@ -24,7 +24,6 @@ const navigation = [
 ];
 
 const adminNavigation = [
-  { name: 'Gestion Exigences', href: '/admin/requirements', icon: DocumentTextIcon },
   { name: 'Gestion Calendrier', href: '/admin/calendar', icon: CalendarIcon },
   { name: 'Gestion Utilisateurs', href: '/admin/users', icon: UserIcon },
 ];
@@ -33,7 +32,7 @@ export const Sidebar: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
 
-  const isAdmin = user?.role === 'RESP_PLATEFORME';
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <div className="flex h-full w-64 flex-col bg-gray-900">
@@ -44,25 +43,32 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <nav className="flex-1 space-y-1 px-2 py-4">
-        {navigation.map((item) => {
-          const isActive = location.pathname === item.href || 
-            (item.href === '/class' && location.pathname.startsWith('/class/'));
-          
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`${
-                isActive
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-              } group flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors`}
-            >
-              <item.icon className="mr-3 h-5 w-5" />
-              {item.name}
-            </Link>
-          );
-        })}
+        {navigation
+          .filter((item) => {
+            // Sur l'interface admin, on cache "Ma Classe" et "Exigences"
+            if (isAdmin && (item.name === 'Ma Classe' || item.name === 'Exigences')) return false;
+            return true;
+          })
+          .map((item) => {
+            const isActive =
+              location.pathname === item.href ||
+              (item.href === '/class' && location.pathname.startsWith('/class/'));
+
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`${
+                  isActive
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                } group flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors`}
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+              </Link>
+            );
+          })}
 
         {isAdmin && (
           <>

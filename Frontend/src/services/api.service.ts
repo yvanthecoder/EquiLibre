@@ -159,6 +159,10 @@ export const userService = {
       avatar: data.avatar,
       classId: data.classId?.toString(),
       createdAt: data.createdAt,
+      company: data.company,
+      phone: data.phone,
+      jobTitle: data.jobTitle,
+      isActive: data.isActive,
     };
   },
 
@@ -173,6 +177,10 @@ export const userService = {
       avatar: data.avatar,
       classId: data.classId?.toString(),
       createdAt: data.createdAt,
+      company: data.company,
+      phone: data.phone,
+      jobTitle: data.jobTitle,
+      isActive: data.isActive,
     };
   },
 
@@ -183,6 +191,36 @@ export const userService = {
   getAllUsers: async (): Promise<User[]> => {
     const { data } = await api.get('/users');
     return data;
+  },
+
+  createUser: async (payload: RegisterRequest): Promise<User> => {
+    const backendData: any = {
+      email: payload.email,
+      password: payload.password,
+      firstname: payload.firstName,
+      lastname: payload.lastName,
+      role: payload.role,
+      company: payload.company,
+      phone: payload.phone,
+      jobTitle: payload.jobTitle,
+      classId: payload.classId,
+    };
+
+    const { data } = await api.post('/auth/register', backendData);
+    const newUser = data.data.user;
+    return {
+      id: newUser.id.toString(),
+      email: newUser.email,
+      firstName: newUser.firstname,
+      lastName: newUser.lastname,
+      role: newUser.role,
+      classId: newUser.class_id?.toString(),
+      createdAt: newUser.created_at || new Date().toISOString(),
+      company: newUser.company,
+      phone: newUser.phone,
+      jobTitle: newUser.job_title,
+      isActive: newUser.is_active,
+    };
   },
 };
 
