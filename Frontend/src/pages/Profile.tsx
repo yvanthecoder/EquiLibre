@@ -11,9 +11,11 @@ import { classService } from '../services/api.service';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/UI/Modal';
 import { useNotifications } from '../hooks/useNotifications';
+import { useRequirements } from '../hooks/useRequirements';
 
 export const Profile: React.FC = () => {
   const { user } = useAuth();
+  const { requirements } = useRequirements(user?.classId);
   const [showEdit, setShowEdit] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [className, setClassName] = useState<string | null>(null);
@@ -66,6 +68,32 @@ export const Profile: React.FC = () => {
     }
     localStorage.setItem('pref_darkmode', String(darkMode));
   }, [darkMode]);
+
+  useEffect(() => {
+    const shouldOpen = localStorage.getItem('open_notifications');
+    if (shouldOpen === 'true') {
+      setShowNotifications(true);
+      localStorage.removeItem('open_notifications');
+    }
+  }, []);
+
+  const submissionsByMe = (() => {
+    if (!requirements || !user) return 0;
+    return requirements.reduce((acc, req: any) => {
+      const mine = req.submissions?.filter((s: any) => s.userId?.toString() === user.id.toString()).length || 0;
+      return acc + mine;
+    }, 0);
+  })();
+
+  const validationsByMe = (() => {
+    if (!requirements || !user) return 0;
+    return requirements.reduce((acc, req: any) => {
+      const mine = req.submissions?.filter(
+        (s: any) => s.userId?.toString() === user.id.toString() && s.status === 'VALIDATED'
+      ).length || 0;
+      return acc + mine;
+    }, 0);
+  })();
 
   return (
     <div className="space-y-6">
@@ -191,11 +219,11 @@ export const Profile: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Exigences soumises</span>
-                <span className="font-semibold text-blue-600">3</span>
+                <span className="font-semibold text-blue-600">{submissionsByMe}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Validations obtenues</span>
-                <span className="font-semibold text-green-600">1</span>
+                <span className="font-semibold text-green-600">{validationsByMe}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Messages envoyés</span>

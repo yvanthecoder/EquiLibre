@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useEvents, useCreateEvent, useUpdateEvent } from '../../hooks/useEvents';
 import { Card } from '../../components/UI/Card';
@@ -8,7 +9,7 @@ import { Table } from '../../components/UI/Table';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { CreateEventRequest } from '../../types/api';
 import { useClassesList } from '../../hooks/useUsers';
 
@@ -20,6 +21,7 @@ const toLocalInput = (value?: string) => {
 
 export const AdminCalendar: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { classes } = useClassesList();
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const { events, isLoading } = useEvents(selectedClassId);
@@ -146,8 +148,9 @@ export const AdminCalendar: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>← Retour</Button>
           <h1 className="text-2xl font-bold text-gray-900">Gestion du calendrier</h1>
           <select
             value={selectedClassId}
@@ -160,6 +163,10 @@ export const AdminCalendar: React.FC = () => {
               </option>
             ))}
           </select>
+          <Link to="/calendar" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+            <CalendarIcon className="h-4 w-4" />
+            Voir le calendrier visuel
+          </Link>
         </div>
         <Button onClick={() => { setSelectedEvent(null); setShowCreateModal(true); }}>
           <PlusIcon className="h-5 w-5 mr-2" />

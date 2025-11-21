@@ -65,7 +65,7 @@ const ROLE_PERMISSIONS = {
         canCreateRequirements: false,
         canEditRequirements: false,
         canDeleteRequirements: false,
-        canValidateRequirements: false,
+        canValidateRequirements: true,
         canManageUsers: false,
         canManageClasses: false,
         canViewStudentData: true

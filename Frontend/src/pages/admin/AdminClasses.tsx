@@ -118,7 +118,10 @@ export const AdminClasses: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des Classes</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => window.history.back()}>← Retour</Button>
+          <h1 className="text-2xl font-bold text-gray-900">Gestion des Classes</h1>
+        </div>
         <Button onClick={() => setShowCreateModal(true)}>
           Créer une classe
         </Button>

@@ -28,15 +28,6 @@ export const useClassFiles = (classId?: string) => {
   };
 };
 
-export const useSharedFiles = () => {
-  const { data: files, isLoading } = useQuery({
-    queryKey: ['files', 'shared'],
-    queryFn: fileService.getSharedFiles,
-  });
-
-  return { files, isLoading };
-};
-
 export const useUploadFile = () => {
   const queryClient = useQueryClient();
 

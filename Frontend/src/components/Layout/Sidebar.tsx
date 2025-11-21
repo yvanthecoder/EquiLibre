@@ -21,6 +21,7 @@ const navigation = [
   { name: 'Mes Fichiers', href: '/files', icon: FolderIcon },
   { name: 'Calendrier', href: '/calendar', icon: CalendarIcon },
   { name: 'Messages', href: '/messages', icon: ChatBubbleLeftRightIcon },
+  { name: 'Annuaire', href: '/directory', icon: UserGroupIcon },
 ];
 
 const adminNavigation = [
@@ -34,6 +35,7 @@ export const Sidebar: React.FC = () => {
 
   const isAdmin = user?.role === 'ADMIN';
   const isMaitre = user?.role === 'MAITRE_APP';
+  const isStudent = user?.role === 'ALTERNANT' || user?.role === 'ETUDIANT_CLASSIQUE';
 
   return (
     <div className="flex h-full w-64 flex-col bg-gray-900">
@@ -46,12 +48,14 @@ export const Sidebar: React.FC = () => {
       <nav className="flex-1 space-y-1 px-2 py-4">
         {navigation
           .filter((item) => {
-            if (isAdmin && (item.name === 'Ma Classe' || item.name === 'Exigences')) {
-              return false;
-            }
-            if (isMaitre && (item.name === 'Ma Classe' || item.name === 'Exigences' || item.name === 'Mes Fichiers')) {
-              return false;
-            }
+            // Admin/maître n'ont pas de classe : cacher "Ma Classe"
+            if ((isAdmin || isMaitre) && item.name === 'Ma Classe') return false;
+            // Admin ne voit pas exigence/fichiers côté user
+            if (isAdmin && (item.name === 'Exigences' || item.name === 'Mes Fichiers')) return false;
+            // Maître n'a pas besoin d'exigences/fichiers ici
+            if (isMaitre && (item.name === 'Exigences' || item.name === 'Mes Fichiers')) return false;
+            // Autres rôles : si pas étudiant/alternant, cacher Ma Classe
+            if (!isStudent && item.name === 'Ma Classe') return false;
             return true;
           })
           .map((item) => {

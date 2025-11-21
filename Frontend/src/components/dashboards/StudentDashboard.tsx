@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRequirements } from '../../hooks/useRequirements';
 import { useEvents } from '../../hooks/useEvents';
@@ -8,12 +8,16 @@ import { StatusBadge } from '../UI/StatusBadge';
 import { Button } from '../UI/Button';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import { notificationService } from '../../services/api.service';
+import toast from 'react-hot-toast';
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
   const { requirements } = useRequirements(user?.classId);
   const { events } = useEvents(user?.classId);
   const { notifications } = useNotifications();
+  const navigate = useNavigate();
 
   // Get upcoming deadlines
   const upcomingDeadlines = requirements
@@ -25,12 +29,33 @@ export const StudentDashboard: React.FC = () => {
   const pendingRequirements = requirements?.filter(req => req.status === 'PENDING');
 
   // Get upcoming events
-  const upcomingEvents = events
-    ?.filter(event => new Date(event.startDate) > new Date())
-    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-    .slice(0, 3);
+  const upcomingEvents = useMemo(() => (
+    events
+      ?.filter(event => new Date(event.startDate) > new Date())
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+      .slice(0, 3)
+  ), [events]);
 
   const isAlternant = user?.role === 'ALTERNANT';
+
+  const markAllNotifications = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      toast.success('Notifications mises à jour');
+    } catch (err) {
+      toast.error('Impossible de marquer comme lu');
+    }
+  };
+
+  const getEventTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      COURSE: 'Cours',
+      EXAM: 'Examen',
+      DEADLINE: 'Échéance',
+      MEETING: 'Réunion',
+    };
+    return labels[type] || type;
+  };
 
   return (
     <div className="space-y-6">
@@ -74,17 +99,21 @@ export const StudentDashboard: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">
               Prochaines échéances
             </h2>
-            <Button variant="ghost" size="sm">Voir tout</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/requirements')}>Voir tout</Button>
           </div>
           <div className="space-y-3">
-            {upcomingDeadlines?.length ? (
-              upcomingDeadlines.map(req => (
-                <div key={req.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{req.title}</h3>
-                    <p className="text-sm text-gray-600">
-                      Échéance: {format(new Date(req.dueDate), 'dd/MM/yyyy', { locale: fr })}
-                    </p>
+              {upcomingDeadlines?.length ? (
+                upcomingDeadlines.map(req => (
+                  <div
+                    key={req.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/requirements/${req.id}`)}
+                  >
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">{req.title}</h3>
+                      <p className="text-sm text-gray-600">
+                        Échéance: {format(new Date(req.dueDate), 'dd/MM/yyyy', { locale: fr })}
+                      </p>
                   </div>
                   <StatusBadge status={req.status} size="sm" />
                 </div>
@@ -103,12 +132,16 @@ export const StudentDashboard: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">
               Prochains événements
             </h2>
-            <Button variant="ghost" size="sm">Voir tout</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')}>Voir tout</Button>
           </div>
           <div className="space-y-3">
             {upcomingEvents?.length ? (
               upcomingEvents.map(event => (
-                <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
+                <div
+                  key={event.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                  onClick={() => navigate('/calendar')}
+                >
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900">{event.title}</h3>
                     <p className="text-sm text-gray-600">
@@ -116,7 +149,7 @@ export const StudentDashboard: React.FC = () => {
                     </p>
                   </div>
                   <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                    {event.type}
+                    {getEventTypeLabel(event.type)}
                   </span>
                 </div>
               ))
@@ -134,7 +167,7 @@ export const StudentDashboard: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">
               Notifications récentes
             </h2>
-            <Button variant="ghost" size="sm">Tout marquer comme lu</Button>
+            <Button variant="ghost" size="sm" onClick={markAllNotifications}>Tout marquer comme lu</Button>
           </div>
           <div className="space-y-3">
             {notifications?.slice(0, 3).length ? (
@@ -168,21 +201,21 @@ export const StudentDashboard: React.FC = () => {
             Actions rapides
           </h2>
           <div className="space-y-2">
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/files')}>
               <span className="mr-2">📄</span>
               Soumettre un document
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/messages')}>
               <span className="mr-2">💬</span>
               Contacter mon tuteur
             </Button>
             {isAlternant && (
-              <Button className="w-full justify-start" variant="outline">
+              <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/messages')}>
                 <span className="mr-2">👔</span>
                 Contacter mon maître d'apprentissage
               </Button>
             )}
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/calendar')}>
               <span className="mr-2"> </span>
               Voir mes cours
             </Button>

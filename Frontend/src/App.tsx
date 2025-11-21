@@ -15,11 +15,12 @@ import { Dashboard } from './pages/Dashboard';
 import { Requirements } from './pages/Requirements';
 import { RequirementDetail } from './pages/RequirementDetail';
 import { Profile } from './pages/Profile';
-import { Class } from './pages/Class';
+import ClassPage from './pages/Class';
 import { Files } from './pages/Files';
 import { Calendar } from './pages/Calendar';
 import { Messages } from './pages/Messages';
 import { MessageThread } from './pages/MessageThread';
+import Directory from './pages/Directory';
 
 // Admin Pages
 import { AdminRequirements } from './pages/admin/AdminRequirements';
@@ -102,7 +103,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <Class />
+                    <ClassPage />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -149,6 +150,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <MessageThread />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/directory"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Directory />
                   </Layout>
                 </ProtectedRoute>
               }

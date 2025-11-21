@@ -14,7 +14,6 @@ import { fr } from 'date-fns/locale';
 import {
   usePersonalFiles,
   useClassFiles,
-  useSharedFiles,
   useUploadFile,
   useDeleteFile,
 } from '../hooks/useFiles';
@@ -45,13 +44,14 @@ export const Files: React.FC = () => {
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState<string>('');
-  const [sharedRole, setSharedRole] = useState<string>(user?.role || 'ALTERNANT');
   const [requiresSignature, setRequiresSignature] = useState<boolean>(false);
+  const [signatureList, setSignatureList] = useState<any[]>([]);
+  const [signatureFileName, setSignatureFileName] = useState<string>('');
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const { files: personalFiles } = usePersonalFiles();
   const { files: classFiles } = useClassFiles(activeClassId);
-  const { files: sharedFiles } = useSharedFiles();
   const { uploadFile, isUploading } = useUploadFile();
   const { deleteFile, isDeleting } = useDeleteFile();
 
@@ -70,34 +70,39 @@ export const Files: React.FC = () => {
     loadClasses();
   }, [activeClassId]);
 
+  const isStudent = user?.role === 'ALTERNANT' || user?.role === 'ETUDIANT_CLASSIQUE';
+
   const filesWithCategory = useMemo(() => {
     const combined = [
       ...(personalFiles || []).map((f: any) => ({
         ...f,
         _category: deriveCategory(f.fileType || '', false),
       })),
-      ...(classFiles || []).map((f: any) => ({
+      ...(isStudent ? classFiles || [] : []).map((f: any) => ({
         ...f,
-        _category: deriveCategory(f.fileType || '', true),
-      })),
-      ...(sharedFiles || []).map((f: any) => ({
-        ...f,
-        _category: 'shared',
+        _category: 'class',
       })),
     ];
     return combined;
-  }, [personalFiles, classFiles, sharedFiles]);
+  }, [personalFiles, classFiles, isStudent]);
 
   const categories = useMemo(() => {
-    const base = [
-      { id: 'all', name: 'Tous les fichiers' },
-      { id: 'projects', name: 'Projets' },
-      { id: 'reports', name: 'Rapports' },
-      { id: 'presentations', name: 'Présentations' },
-      { id: 'documents', name: 'Documents' },
-      { id: 'class', name: 'Fichiers de classe' },
-      { id: 'shared', name: 'Partagés (rôle)' },
-    ];
+    const base = isStudent
+      ? [
+          { id: 'all', name: 'Tous les fichiers' },
+          { id: 'projects', name: 'Projets' },
+          { id: 'reports', name: 'Rapports' },
+          { id: 'presentations', name: 'Présentations' },
+          { id: 'documents', name: 'Documents' },
+          { id: 'class', name: 'Equipe tutorale' },
+        ]
+      : [
+          { id: 'all', name: 'Tous les fichiers' },
+          { id: 'projects', name: 'Projets' },
+          { id: 'reports', name: 'Rapports' },
+          { id: 'presentations', name: 'Présentations' },
+          { id: 'documents', name: 'Documents' },
+        ];
     return base.map((c) => ({
       ...c,
       count: c.id === 'all' ? filesWithCategory.length : filesWithCategory.filter((f) => f._category === c.id).length,
@@ -119,13 +124,11 @@ export const Files: React.FC = () => {
       e.target.value = '';
       return;
     }
-    const isShared = selectedCategory === 'shared';
     uploadFile(
       {
         file: file as any,
         classId: selectedCategory === 'class' ? activeClassId : undefined,
-        visibilityRole: isShared ? sharedRole : undefined,
-        requiresSignature: isShared ? requiresSignature : false,
+        requiresSignature: selectedCategory === 'class' ? requiresSignature : false,
       } as any,
       {
         onSuccess: () => {
@@ -154,6 +157,17 @@ export const Files: React.FC = () => {
     } catch (err) {
       toast.error('Prévisualisation impossible, téléchargement…');
       handleDownload(fileId, fileName);
+    }
+  };
+
+  const handleShowSignatures = async (file: any) => {
+    try {
+      const list = await fileService.getSignatures(file.id.toString());
+      setSignatureList(list || []);
+      setSignatureFileName(file.fileName || file.name);
+      setShowSignatureModal(true);
+    } catch (err) {
+      toast.error('Impossible de charger les signatures');
     }
   };
 
@@ -201,30 +215,6 @@ export const Files: React.FC = () => {
                 </option>
               ))}
             </select>
-          )}
-          {selectedCategory === 'shared' && (
-            <>
-              <select
-                value={sharedRole}
-                onChange={(e) => setSharedRole(e.target.value)}
-                className="text-sm border-gray-300 rounded-md"
-              >
-                <option value="ALTERNANT">Alternants</option>
-                <option value="ETUDIANT_CLASSIQUE">Étudiants</option>
-                <option value="TUTEUR_ECOLE">Tuteurs</option>
-                <option value="MAITRE_APP">Maîtres</option>
-                <option value="ADMIN">Admins</option>
-              </select>
-              <label className="text-sm flex items-center gap-2 text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={requiresSignature}
-                  onChange={(e) => setRequiresSignature(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                Signature requise
-              </label>
-            </>
           )}
           <Button onClick={handleUploadClick} isLoading={isUploading}>
             <CloudArrowUpIcon className="h-4 w-4 mr-2" />
@@ -294,7 +284,7 @@ export const Files: React.FC = () => {
                       <span>v{file.version || 1}</span>
                       {file.visibilityRole && (
                         <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-                          Rôle {file.visibilityRole}
+                          Partage rôle
                         </span>
                       )}
                       {file.requiresSignature && (
@@ -329,6 +319,11 @@ export const Files: React.FC = () => {
                       Signer
                     </Button>
                   )}
+                  {file.requiresSignature && (
+                    <Button variant="outline" size="sm" onClick={() => handleShowSignatures(file)}>
+                      Signatures
+                    </Button>
+                  )}
                   {file.visibilityRole && (
                     <Button
                       variant="outline"
@@ -337,7 +332,7 @@ export const Files: React.FC = () => {
                         uploadFile(
                           {
                             file: file as any,
-                            visibilityRole: file.visibilityRole,
+                            classId: selectedCategory === 'class' ? activeClassId : undefined,
                             requiresSignature: file.requiresSignature,
                             parentFileId: file.id,
                             version: (file.version || 1) + 1,
@@ -398,6 +393,38 @@ export const Files: React.FC = () => {
         ) : (
           <p className="text-gray-600">Chargement de l'aperçu...</p>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={showSignatureModal}
+        onClose={() => {
+          setShowSignatureModal(false);
+          setSignatureList([]);
+          setSignatureFileName('');
+        }}
+        title={`Signatures - ${signatureFileName}`}
+        size="md"
+      >
+        <div className="space-y-2 max-h-80 overflow-y-auto text-sm">
+          {signatureList.map((sig: any) => (
+            <div key={sig.id} className="flex justify-between border-b border-gray-100 pb-1">
+              <div>
+                <p className="text-gray-900">
+                  {sig.firstname ? `${sig.firstname} ${sig.lastname}` : `Utilisateur #${sig.userId}`}
+                </p>
+                <p className="text-xs text-gray-500">{sig.email || ''}</p>
+              </div>
+              <span className="text-xs text-gray-500">
+                {sig.signedAt
+                  ? format(new Date(sig.signedAt), 'dd/MM HH:mm', { locale: fr })
+                  : ''}
+              </span>
+            </div>
+          ))}
+          {signatureList.length === 0 && (
+            <p className="text-sm text-gray-500 text-center py-4">Aucune signature pour ce fichier</p>
+          )}
+        </div>
       </Modal>
     </div>
   );

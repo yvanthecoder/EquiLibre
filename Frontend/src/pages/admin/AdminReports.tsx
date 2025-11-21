@@ -3,12 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Card } from '../../components/UI/Card';
 import { assignmentService, classService } from '../../services/api.service';
 import { Button } from '../../components/UI/Button';
+import { useNavigate } from 'react-router-dom';
 
 const AdminReports: React.FC = () => {
   const { data: classes } = useQuery({
     queryKey: ['reports', 'classes'],
     queryFn: classService.getMyClasses,
   });
+  const navigate = useNavigate();
 
   const { data: assignments } = useQuery({
     queryKey: ['reports', 'assignments'],
@@ -42,9 +44,12 @@ const AdminReports: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reporting</h1>
-          <p className="text-gray-600">Stats rapides par classe (assignations)</p>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>← Retour</Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Reporting</h1>
+            <p className="text-gray-600">Stats rapides par classe (assignations)</p>
+          </div>
         </div>
         <Button onClick={exportCsv}>Exporter CSV</Button>
       </div>

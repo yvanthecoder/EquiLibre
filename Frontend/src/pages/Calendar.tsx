@@ -18,10 +18,42 @@ import {
 import { fr } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { classService } from '../services/api.service';
+import { useNavigate } from 'react-router-dom';
+
+const academicEvents = [
+  {
+    id: 'AC-EXAMS-1',
+    title: 'Période d’évaluations',
+    description: 'Contrôles intermédiaires',
+    startDate: '2025-01-10T08:00:00',
+    endDate: '2025-01-20T18:00:00',
+    classId: '',
+    type: 'EXAM' as const,
+  },
+  {
+    id: 'AC-SOUT-1',
+    title: 'Soutenances semestrielles',
+    description: 'Présentations en école',
+    startDate: '2025-02-05T08:00:00',
+    endDate: '2025-02-07T18:00:00',
+    classId: '',
+    type: 'EXAM' as const,
+  },
+  {
+    id: 'AC-VISITE-1',
+    title: 'Visites en entreprise',
+    description: 'Rencontres tuteur/maître',
+    startDate: '2025-03-01T08:00:00',
+    endDate: '2025-03-15T18:00:00',
+    classId: '',
+    type: 'MEETING' as const,
+  },
+];
 
 export const Calendar: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Classe active (fallback si l'utilisateur n'a pas classId direct)
   const [activeClassId, setActiveClassId] = useState<string | undefined>(user?.classId);
@@ -37,30 +69,36 @@ export const Calendar: React.FC = () => {
   const [startTime, setStartTime] = useState<string>('09:00');
   const [endTime, setEndTime] = useState<string>('10:00');
   const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
+  const [showAcademic, setShowAcademic] = useState<boolean>(true);
 
-  const { data: events, isLoading } = useEvents(activeClassId);
+  const { data: events, isLoading } = useEvents(activeClassId || user?.classId);
   const { createEvent, isCreating } = useCreateEvent();
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
+  const combinedEvents = useMemo(() => {
+    const base = events || [];
+    return showAcademic ? [...base, ...academicEvents] : base;
+  }, [events, showAcademic]);
+
   const getEventsForDay = (day: Date) => {
     const target = format(day, 'yyyy-MM-dd');
-    return events?.filter((event) => format(new Date(event.startDate), 'yyyy-MM-dd') === target) || [];
+    return combinedEvents?.filter((event) => format(new Date(event.startDate), 'yyyy-MM-dd') === target) || [];
   };
 
   const sortedEvents = useMemo(() => {
-    return (events || []).slice().sort(
+    return (combinedEvents || []).slice().sort(
       (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
-  }, [events]);
+  }, [combinedEvents]);
 
   const dayEvents = useMemo(() => {
     if (!selectedDay) return [];
     const target = format(selectedDay, 'yyyy-MM-dd');
-    return events?.filter((event) => format(new Date(event.startDate), 'yyyy-MM-dd') === target) || [];
-  }, [selectedDay, events]);
+    return combinedEvents?.filter((event) => format(new Date(event.startDate), 'yyyy-MM-dd') === target) || [];
+  }, [selectedDay, combinedEvents]);
 
   const getEventTypeColor = (type: string) => {
     const colors = {
@@ -174,16 +212,19 @@ export const Calendar: React.FC = () => {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Calendrier</h1>
-            <p className="text-gray-600">Consultez vos cours, examens et échéances</p>
-          </div>
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
-            {availableClasses.length > 1 && (
-              <select
-                value={activeClassId}
-                onChange={(e) => setActiveClassId(e.target.value)}
+            <Button variant="outline" size="sm" onClick={() => navigate(-1)}>← Retour</Button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Calendrier</h1>
+              <p className="text-gray-600">Consultez vos cours, examens et échéances</p>
+            </div>
+          </div>
+        <div className="flex items-center gap-3">
+          {availableClasses.length > 1 && (
+            <select
+              value={activeClassId}
+              onChange={(e) => setActiveClassId(e.target.value)}
                 className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
               >
                 {availableClasses.map((cls) => (
@@ -197,6 +238,15 @@ export const Calendar: React.FC = () => {
               <CalendarIcon className="h-4 w-4 mr-2" />
               Nouvel événement
             </Button>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={showAcademic}
+                onChange={(e) => setShowAcademic(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              Afficher calendrier académique
+            </label>
           </div>
         </div>
 
@@ -245,22 +295,26 @@ export const Calendar: React.FC = () => {
                   const dayEventsList = getEventsForDay(day);
                   const isCurrentMonth = isSameMonth(day, currentDate);
                   const isDayToday = isToday(day);
+                  const hasEvents = dayEventsList.length > 0;
 
                   return (
                     <div
                       key={day.toISOString()}
-                      className={`min-h-[100px] p-2 border border-gray-200 ${
-                        isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-                      } ${isDayToday ? 'ring-2 ring-blue-500' : ''}`}
+                      className={`min-h-[110px] p-2 border ${
+                        hasEvents ? 'border-blue-300 bg-blue-50/40' : 'border-gray-200'
+                      } ${isCurrentMonth ? 'bg-white' : 'bg-gray-50'} ${isDayToday ? 'ring-2 ring-blue-500' : ''}`}
                       role="button"
                       onClick={() => handleDayClick(day)}
                     >
-                      <div
-                        className={`text-sm font-medium mb-1 ${
-                          isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
-                        } ${isDayToday ? 'text-blue-600' : ''}`}
-                      >
-                        {format(day, 'd')}
+                      <div className="flex items-center justify-between mb-1">
+                        <span
+                          className={`text-sm font-semibold ${
+                            isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+                          } ${isDayToday ? 'text-blue-600' : ''}`}
+                        >
+                          {format(day, 'd')}
+                        </span>
+                        {hasEvents && <span className="w-2 h-2 rounded-full bg-blue-500" />}
                       </div>
                       <div className="space-y-1">
                         {dayEventsList.slice(0, 2).map((event) => (

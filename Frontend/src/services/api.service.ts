@@ -439,11 +439,6 @@ export const fileService = {
     return data;
   },
 
-  getSharedFiles: async (): Promise<File[]> => {
-    const { data } = await api.get('/files/shared');
-    return data;
-  },
-
   getClassFiles: async (classId: string): Promise<File[]> => {
     const { data } = await api.get(`/files/class/${classId}`);
     return data;
