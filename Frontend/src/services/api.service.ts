@@ -243,6 +243,14 @@ export const classService = {
     return data;
   },
 
+  addClassMember: async (classId: string, userId: string): Promise<void> => {
+    await api.post(`/classes/${classId}/members`, { userId });
+  },
+
+  removeClassMember: async (classId: string, userId: string): Promise<void> => {
+    await api.delete(`/classes/${classId}/members/${userId}`);
+  },
+
   getClassRequirements: async (classId: string): Promise<Requirement[]> => {
     const { data } = await api.get(`/classes/${classId}/requirements`);
     return (data || []).map((req: any) => ({
@@ -431,17 +439,26 @@ export const fileService = {
     return data;
   },
 
+  getSharedFiles: async (): Promise<File[]> => {
+    const { data } = await api.get('/files/shared');
+    return data;
+  },
+
   getClassFiles: async (classId: string): Promise<File[]> => {
     const { data } = await api.get(`/files/class/${classId}`);
     return data;
   },
 
-  uploadFile: async (file: File, classId?: string): Promise<File> => {
+  uploadFile: async (file: File, classId?: string, options?: { visibilityRole?: string; requiresSignature?: boolean; parentFileId?: string; version?: number }): Promise<File> => {
     const formData = new FormData();
     formData.append('file', file as any);
     if (classId) {
       formData.append('classId', classId);
     }
+    if (options?.visibilityRole) formData.append('visibilityRole', options.visibilityRole);
+    if (options?.requiresSignature) formData.append('requiresSignature', 'true');
+    if (options?.parentFileId) formData.append('parentFileId', options.parentFileId);
+    if (options?.version) formData.append('version', options.version.toString());
 
     const { data } = await api.post('/files/upload', formData, {
       headers: {
@@ -460,6 +477,15 @@ export const fileService = {
       responseType: 'blob',
     });
     return data;
+  },
+
+  signFile: async (fileId: string): Promise<void> => {
+    await api.post(`/files/${fileId}/sign`);
+  },
+
+  getSignatures: async (fileId: string): Promise<any[]> => {
+    const { data } = await api.get(`/files/${fileId}/signatures`);
+    return data.data || data;
   },
 };
 
@@ -675,6 +701,12 @@ export const assignmentService = {
   }> => {
     const response = await api.get('/assignments/stats');
     return response.data.data;
+  },
+
+  getAssignmentHistory: async (assignmentId?: number): Promise<any[]> => {
+    const url = assignmentId ? `/assignments/${assignmentId}/history` : '/assignments/history/all';
+    const response = await api.get(url);
+    return response.data.data || [];
   },
 
   // Get unassigned students (admin only)

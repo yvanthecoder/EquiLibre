@@ -72,6 +72,10 @@ export interface File {
   fileType: string;
   userId: string;
   classId?: string;
+  visibilityRole?: string;
+  requiresSignature?: boolean;
+  parentFileId?: string;
+  version?: number;
   uploadedAt: string;
 }
 

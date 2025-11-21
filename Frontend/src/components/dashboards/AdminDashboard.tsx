@@ -29,6 +29,8 @@ export const AdminDashboard: React.FC = () => {
   const [broadcastText, setBroadcastText] = useState('');
   const [sending, setSending] = useState(false);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>(['ALL']);
+  const [broadcastClassId, setBroadcastClassId] = useState<string>('');
+  const [targetEmail, setTargetEmail] = useState<string>('');
 
   useEffect(() => {
     fetchStats();
@@ -339,6 +341,29 @@ export const AdminDashboard: React.FC = () => {
           try {
             setSending(true);
             const allUsers = await userService.getAllUsers();
+            // Si une classe est sélectionnée, envoyer au groupe classe
+            if (broadcastClassId) {
+              try {
+                const members = await classService.getClassMembers(broadcastClassId);
+                const memberIds = members.map((m: any) => Number(m.id));
+                const selfId = Number(user.id);
+                if (!memberIds.includes(selfId)) memberIds.push(selfId);
+                const conversation = await messageService.createConversation(memberIds);
+                await messageService.sendMessage(Number(conversation.id), content.trim());
+                toast.success('Message diffusé');
+                setBroadcastText('');
+                setShowBroadcast(false);
+                setBroadcastClassId('');
+                setTargetEmail('');
+                return;
+              } catch (err: any) {
+                const message = err.response?.data?.message || 'Erreur diffusion classe';
+                toast.error(message);
+                return;
+              } finally {
+                setSending(false);
+              }
+            }
             const wantedRoles: Record<string, string[]> = {
               STUDENTS: ['ALTERNANT', 'ETUDIANT_CLASSIQUE'],
               TUTORS: ['TUTEUR_ECOLE'],
@@ -355,6 +380,11 @@ export const AdminDashboard: React.FC = () => {
               .filter((u: any) => audienceRoles.includes(u.role))
               .map((u: any) => Number(u.id));
 
+            if (targetEmail) {
+              const target = allUsers.find((u: any) => u.email === targetEmail);
+              if (target) participantIds.push(Number(target.id));
+            }
+
             const selfId = Number(user.id);
             if (!participantIds.includes(selfId)) participantIds.push(selfId);
 
@@ -368,6 +398,8 @@ export const AdminDashboard: React.FC = () => {
             toast.success('Message diffusé');
             setBroadcastText('');
             setShowBroadcast(false);
+            setBroadcastClassId('');
+            setTargetEmail('');
           } catch (err: any) {
             const message = err.response?.data?.message || 'Erreur lors de l’envoi';
             toast.error(message);
@@ -377,6 +409,10 @@ export const AdminDashboard: React.FC = () => {
         }}
         selectedAudiences={selectedAudiences}
         setSelectedAudiences={setSelectedAudiences}
+        broadcastClassId={broadcastClassId}
+        setBroadcastClassId={setBroadcastClassId}
+        targetEmail={targetEmail}
+        setTargetEmail={setTargetEmail}
       />
     </div>
   );
@@ -391,6 +427,10 @@ type BroadcastModalProps = {
   onSend: (audiences: string[], content: string) => void;
   selectedAudiences: string[];
   setSelectedAudiences: (val: string[]) => void;
+  broadcastClassId: string;
+  setBroadcastClassId: (val: string) => void;
+  targetEmail: string;
+  setTargetEmail: (val: string) => void;
 };
 
 const BroadcastModal: React.FC<BroadcastModalProps> = ({
@@ -402,6 +442,10 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({
   onSend,
   selectedAudiences,
   setSelectedAudiences,
+  broadcastClassId,
+  setBroadcastClassId,
+  targetEmail,
+  setTargetEmail,
 }) => {
   const toggleAudience = (id: string) => {
     if (id === 'ALL') {
@@ -444,6 +488,26 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({
               </button>
             ))}
           </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">Classe (optionnel)</p>
+          <input
+            type="text"
+            value={broadcastClassId}
+            onChange={(e) => setBroadcastClassId(e.target.value)}
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="ID de classe pour cibler les membres"
+          />
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">Destinataire direct (email, optionnel)</p>
+          <input
+            type="email"
+            value={targetEmail}
+            onChange={(e) => setTargetEmail(e.target.value)}
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="email@exemple.com"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>

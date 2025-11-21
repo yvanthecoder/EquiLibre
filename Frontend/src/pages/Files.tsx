@@ -14,6 +14,7 @@ import { fr } from 'date-fns/locale';
 import {
   usePersonalFiles,
   useClassFiles,
+  useSharedFiles,
   useUploadFile,
   useDeleteFile,
 } from '../hooks/useFiles';
@@ -44,10 +45,13 @@ export const Files: React.FC = () => {
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState<string>('');
+  const [sharedRole, setSharedRole] = useState<string>(user?.role || 'ALTERNANT');
+  const [requiresSignature, setRequiresSignature] = useState<boolean>(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const { files: personalFiles } = usePersonalFiles();
   const { files: classFiles } = useClassFiles(activeClassId);
+  const { files: sharedFiles } = useSharedFiles();
   const { uploadFile, isUploading } = useUploadFile();
   const { deleteFile, isDeleting } = useDeleteFile();
 
@@ -76,9 +80,13 @@ export const Files: React.FC = () => {
         ...f,
         _category: deriveCategory(f.fileType || '', true),
       })),
+      ...(sharedFiles || []).map((f: any) => ({
+        ...f,
+        _category: 'shared',
+      })),
     ];
     return combined;
-  }, [personalFiles, classFiles]);
+  }, [personalFiles, classFiles, sharedFiles]);
 
   const categories = useMemo(() => {
     const base = [
@@ -88,6 +96,7 @@ export const Files: React.FC = () => {
       { id: 'presentations', name: 'Présentations' },
       { id: 'documents', name: 'Documents' },
       { id: 'class', name: 'Fichiers de classe' },
+      { id: 'shared', name: 'Partagés (rôle)' },
     ];
     return base.map((c) => ({
       ...c,
@@ -110,8 +119,14 @@ export const Files: React.FC = () => {
       e.target.value = '';
       return;
     }
+    const isShared = selectedCategory === 'shared';
     uploadFile(
-      { file, classId: selectedCategory === 'class' ? activeClassId : undefined },
+      {
+        file: file as any,
+        classId: selectedCategory === 'class' ? activeClassId : undefined,
+        visibilityRole: isShared ? sharedRole : undefined,
+        requiresSignature: isShared ? requiresSignature : false,
+      } as any,
       {
         onSuccess: () => {
           toast.success('Fichier téléversé');
@@ -187,6 +202,30 @@ export const Files: React.FC = () => {
               ))}
             </select>
           )}
+          {selectedCategory === 'shared' && (
+            <>
+              <select
+                value={sharedRole}
+                onChange={(e) => setSharedRole(e.target.value)}
+                className="text-sm border-gray-300 rounded-md"
+              >
+                <option value="ALTERNANT">Alternants</option>
+                <option value="ETUDIANT_CLASSIQUE">Étudiants</option>
+                <option value="TUTEUR_ECOLE">Tuteurs</option>
+                <option value="MAITRE_APP">Maîtres</option>
+                <option value="ADMIN">Admins</option>
+              </select>
+              <label className="text-sm flex items-center gap-2 text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={requiresSignature}
+                  onChange={(e) => setRequiresSignature(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                Signature requise
+              </label>
+            </>
+          )}
           <Button onClick={handleUploadClick} isLoading={isUploading}>
             <CloudArrowUpIcon className="h-4 w-4 mr-2" />
             Télécharger un fichier
@@ -250,23 +289,69 @@ export const Files: React.FC = () => {
                       <div className="text-2xl">📄</div>
                       <div>
                         <h3 className="font-medium text-gray-900">{file.fileName || file.name}</h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>{formatFileSize(file.fileSize || file.file_size || 0)}</span>
-                          <span>•</span>
-                          <span>
-                            Ajouté le{' '}
-                            {file.uploadedAt
-                              ? format(new Date(file.uploadedAt), 'dd/MM/yyyy', { locale: fr })
-                              : 'N/A'}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="flex items-center space-x-3 text-sm text-gray-500 flex-wrap">
+                      <span>{formatFileSize(file.fileSize || file.file_size || 0)}</span>
+                      <span>v{file.version || 1}</span>
+                      {file.visibilityRole && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                          Rôle {file.visibilityRole}
+                        </span>
+                      )}
+                      {file.requiresSignature && (
+                        <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
+                          Signature requise
+                        </span>
+                      )}
+                      <span>
+                        Ajouté le{' '}
+                        {file.uploadedAt
+                          ? format(new Date(file.uploadedAt), 'dd/MM/yyyy', { locale: fr })
+                          : 'N/A'}
+                      </span>
                     </div>
+                  </div>
+                </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handlePreview(file.id.toString(), file.fileName || file.name)}>
-                        <EyeIcon className="h-4 w-4" />
-                      </Button>
+                <div className="flex items-center space-x-2">
+                  {file.requiresSignature && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        fileService
+                          .signFile(file.id.toString())
+                          .then(() => {
+                            toast.success('Signé');
+                          })
+                          .catch(() => toast.error('Erreur signature'))
+                      }
+                    >
+                      Signer
+                    </Button>
+                  )}
+                  {file.visibilityRole && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        uploadFile(
+                          {
+                            file: file as any,
+                            visibilityRole: file.visibilityRole,
+                            requiresSignature: file.requiresSignature,
+                            parentFileId: file.id,
+                            version: (file.version || 1) + 1,
+                          } as any,
+                          { onSuccess: () => toast.success('Nouvelle version envoyée') }
+                        )
+                      }
+                    >
+                      Nouvelle version
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => handlePreview(file.id.toString(), file.fileName || file.name)}>
+                    <EyeIcon className="h-4 w-4" />
+                  </Button>
                       <Button variant="outline" size="sm" onClick={() => handleDownload(file.id.toString(), file.fileName || file.name)}>
                         <ArrowDownTrayIcon className="h-4 w-4" />
                       </Button>

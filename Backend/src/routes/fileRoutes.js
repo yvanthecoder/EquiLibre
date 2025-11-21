@@ -8,9 +8,12 @@ const { requireClassAccess } = require('../middlewares/roleCheck');
 const {
     getPersonalFiles,
     getClassFiles,
+    getSharedFiles,
     uploadFile,
     deleteFile,
-    downloadFile
+    downloadFile,
+    signFile,
+    getFileSignatures
 } = require('../controllers/fileController');
 
 const uploadDir = path.join(__dirname, '../../uploads/files');
@@ -28,9 +31,12 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 router.get('/personal', authenticate, getPersonalFiles);
+router.get('/shared', authenticate, getSharedFiles);
 router.get('/class/:classId', authenticate, requireClassAccess, getClassFiles);
 router.post('/upload', authenticate, upload.single('file'), uploadFile);
 router.delete('/:id', authenticate, deleteFile);
 router.get('/:id/download', authenticate, downloadFile);
+router.post('/:id/sign', authenticate, signFile);
+router.get('/:id/signatures', authenticate, getFileSignatures);
 
 module.exports = router;

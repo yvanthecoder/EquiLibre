@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import api from '../../lib/api';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface Class {
   id: number;
@@ -19,6 +20,7 @@ interface Class {
 }
 
 export const AdminClasses: React.FC = () => {
+  const navigate = useNavigate();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +166,10 @@ export const AdminClasses: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex space-x-2 pt-3 border-t">
+              <div className="flex space-x-2 pt-3 border-t">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(`/admin/classes/${classItem.id}`)}>
+                    Détails
+                  </Button>
                   <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(classItem)}>
                     Modifier
                   </Button>

@@ -27,6 +27,9 @@ import { AdminCalendar } from './pages/admin/AdminCalendar';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminClasses } from './pages/admin/AdminClasses';
 import { AdminAssignments } from './pages/admin/AdminAssignments';
+import AdminClassDetail from './pages/admin/AdminClassDetail';
+import AdminReports from './pages/admin/AdminReports';
+import AdminLogs from './pages/admin/AdminLogs';
 
 // Create query client
 const queryClient = new QueryClient({
@@ -163,6 +166,16 @@ function App() {
               }
             />
             <Route
+              path="/admin/classes/:id"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE']}>
+                  <Layout>
+                    <AdminClassDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/assignments"
               element={
                 <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE']}>
@@ -198,6 +211,26 @@ function App() {
                 <ProtectedRoute allowedRoles={['ADMIN']}>
                   <Layout>
                     <AdminUsers />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reports"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <Layout>
+                    <AdminReports />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/logs"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <Layout>
+                    <AdminLogs />
                   </Layout>
                 </ProtectedRoute>
               }

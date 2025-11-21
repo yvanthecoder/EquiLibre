@@ -33,6 +33,7 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
 
   const isAdmin = user?.role === 'ADMIN';
+  const isMaitre = user?.role === 'MAITRE_APP';
 
   return (
     <div className="flex h-full w-64 flex-col bg-gray-900">
@@ -45,8 +46,12 @@ export const Sidebar: React.FC = () => {
       <nav className="flex-1 space-y-1 px-2 py-4">
         {navigation
           .filter((item) => {
-            // Sur l'interface admin, on cache "Ma Classe" et "Exigences"
-            if (isAdmin && (item.name === 'Ma Classe' || item.name === 'Exigences')) return false;
+            if (isAdmin && (item.name === 'Ma Classe' || item.name === 'Exigences')) {
+              return false;
+            }
+            if (isMaitre && (item.name === 'Ma Classe' || item.name === 'Exigences' || item.name === 'Mes Fichiers')) {
+              return false;
+            }
             return true;
           })
           .map((item) => {

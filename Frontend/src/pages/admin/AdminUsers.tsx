@@ -8,6 +8,7 @@ import { fr } from 'date-fns/locale';
 import { TrashIcon, PencilIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { Modal } from '../../components/UI/Modal';
 import { RegisterRequest, UpdateUserRequest, User, UserRole } from '../../types/api';
+import toast from 'react-hot-toast';
 
 type FormState = {
   firstName: string;
@@ -35,7 +36,7 @@ const defaultForm: FormState = {
   lastName: '',
   email: '',
   role: 'ALTERNANT',
-  password: '',
+  password: Math.random().toString(36).slice(2, 10),
   phone: '',
   company: '',
   jobTitle: '',
@@ -191,6 +192,21 @@ export const AdminUsers: React.FC = () => {
           </Button>
           <Button
             size="sm"
+            variant="outline"
+            onClick={() => {
+              const newPass = Math.random().toString(36).slice(2, 10);
+              updateUser(
+                { password: newPass },
+                {
+                  onSuccess: () => toast.success(`Nouveau mot de passe: ${newPass}`),
+                }
+              );
+            }}
+          >
+            Réinitialiser
+          </Button>
+          <Button
+            size="sm"
             variant="danger"
             onClick={() => handleDelete(row.id)}
             disabled={isDeleting}
@@ -279,6 +295,9 @@ export const AdminUsers: React.FC = () => {
                 type="password"
                 placeholder={editingUser ? 'Nouveau mot de passe' : 'Mot de passe'}
               />
+              {!editingUser && (
+                <p className="text-xs text-gray-500 mt-1">Pré-rempli automatiquement ({form.password})</p>
+              )}
             </div>
           </div>
 

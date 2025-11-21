@@ -10,7 +10,8 @@ const {
     getUnassignedStudents,
     getAvailableMaitres,
     getAvailableTuteurs,
-    getMyAssignment
+    getMyAssignment,
+    getAssignmentHistory
 } = require('../controllers/assignmentController');
 const { authenticate } = require('../middlewares/auth');
 const { requireAdmin } = require('../middlewares/roleCheck');
@@ -56,6 +57,8 @@ router.get('/available-tuteurs', authenticate, requireAdmin, getAvailableTuteurs
  * @access  Private (Tous les rôles)
  */
 router.get('/', authenticate, getAllAssignments);
+router.get('/history/all', authenticate, requireAdmin, getAssignmentHistory);
+router.get('/:id/history', authenticate, requireAdmin, getAssignmentHistory);
 
 /**
  * @route   GET /api/assignments/:id

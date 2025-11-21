@@ -141,6 +141,20 @@ CREATE TABLE assignments (
     UNIQUE (student_id)
 );
 
+-- Historique des assignations
+CREATE TABLE assignment_logs (
+    id SERIAL PRIMARY KEY,
+    assignment_id INTEGER REFERENCES assignments(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    old_maitre_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    new_maitre_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    old_tuteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    new_tuteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(50) NOT NULL, -- CREATED / UPDATED / DELETED
+    changed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- NOTIFICATIONS
 CREATE TABLE notifications (
     id SERIAL PRIMARY KEY,
@@ -164,7 +178,19 @@ CREATE TABLE files (
     file_path TEXT NOT NULL,          -- chemin complet ou relatif
     file_size INTEGER,
     mime_type VARCHAR(255),
-    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    visibility_role VARCHAR(50),      -- partage par rA"le
+    requires_signature BOOLEAN DEFAULT false,
+    version INTEGER DEFAULT 1,
+    parent_file_id INTEGER REFERENCES files(id) ON DELETE SET NULL
+);
+
+CREATE TABLE file_signatures (
+    id SERIAL PRIMARY KEY,
+    file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    signed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (file_id, user_id)
 );
 
 -- CONVERSATIONS (messagerie)

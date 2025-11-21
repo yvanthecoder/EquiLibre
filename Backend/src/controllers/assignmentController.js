@@ -1,4 +1,5 @@
 const Assignment = require('../models/Assignment');
+const AssignmentLog = require('../models/AssignmentLog');
 const User = require('../models/User');
 const { ERROR_MESSAGES, USER_ROLES } = require('../config/constants');
 
@@ -167,6 +168,17 @@ const createAssignment = async (req, res) => {
             tuteurId: tuteurId || null
         });
 
+        await AssignmentLog.create({
+            assignment_id: newAssignment.id,
+            student_id: studentId,
+            old_maitre_id: null,
+            new_maitre_id: maitreId || null,
+            old_tuteur_id: null,
+            new_tuteur_id: tuteurId || null,
+            action: 'CREATED',
+            changed_by: req.user.userId
+        });
+
         res.status(201).json({
             success: true,
             message: 'Assignation créée avec succès',
@@ -251,6 +263,17 @@ const updateAssignment = async (req, res) => {
 
         const updatedAssignment = await Assignment.update(assignmentId, updates);
 
+        await AssignmentLog.create({
+            assignment_id: assignmentId,
+            student_id: existingAssignment.student_id,
+            old_maitre_id: existingAssignment.maitre_id,
+            new_maitre_id: maitreId !== undefined ? maitreId : existingAssignment.maitre_id,
+            old_tuteur_id: existingAssignment.tuteur_id,
+            new_tuteur_id: tuteurId !== undefined ? tuteurId : existingAssignment.tuteur_id,
+            action: 'UPDATED',
+            changed_by: req.user.userId
+        });
+
         res.json({
             success: true,
             message: 'Assignation mise à jour avec succès',
@@ -291,6 +314,17 @@ const deleteAssignment = async (req, res) => {
         }
 
         await Assignment.delete(assignmentId);
+
+        await AssignmentLog.create({
+            assignment_id: assignmentId,
+            student_id: existingAssignment.student_id,
+            old_maitre_id: existingAssignment.maitre_id,
+            new_maitre_id: null,
+            old_tuteur_id: existingAssignment.tuteur_id,
+            new_tuteur_id: null,
+            action: 'DELETED',
+            changed_by: req.user.userId
+        });
 
         res.json({
             success: true,
@@ -412,6 +446,21 @@ const getMyAssignment = async (req, res) => {
     }
 };
 
+// Historique des assignations
+const getAssignmentHistory = async (req, res) => {
+    try {
+        const assignmentId = req.params.id ? parseInt(req.params.id, 10) : null;
+        const history = await AssignmentLog.findAll(assignmentId);
+        res.json({ success: true, data: history });
+    } catch (error) {
+        console.error('Erreur lors de la rAccupAcration de l\'historique:', error);
+        res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR
+        });
+    }
+};
+
 module.exports = {
     getAllAssignments,
     getAssignmentById,
@@ -422,5 +471,6 @@ module.exports = {
     getUnassignedStudents,
     getAvailableMaitres,
     getAvailableTuteurs,
-    getMyAssignment
+    getMyAssignment,
+    getAssignmentHistory
 };

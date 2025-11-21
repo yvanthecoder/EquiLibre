@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { assignmentService, Assignment } from '../../services/api.service';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
 
 interface Student {
   id: number;
@@ -39,6 +41,10 @@ export const AdminAssignments: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+  const { data: history } = useQuery({
+    queryKey: ['assignments', 'history'],
+    queryFn: () => assignmentService.getAssignmentHistory(),
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -170,6 +176,28 @@ export const AdminAssignments: React.FC = () => {
         </Card>
       ) : (
         <div className="space-y-4">
+          <Card className="bg-gray-50 border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-2">Historique des changements</h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {(history || []).map((item: any, idx: number) => (
+                <div key={idx} className="text-sm flex justify-between items-center border-b border-gray-100 pb-1">
+                  <div>
+                    <p className="text-gray-900">
+                      {item.action} — étudiant #{item.student_id}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Maitre: {item.old_maitre_id || '—'} → {item.new_maitre_id || '—'} | Tuteur: {item.old_tuteur_id || '—'} → {item.new_tuteur_id || '—'}
+                    </p>
+                  </div>
+              <div className="text-xs text-gray-500">
+                {item.created_at ? format(new Date(item.created_at), 'dd/MM HH:mm') : ''}
+              </div>
+            </div>
+          ))}
+              {(history || []).length === 0 && <p className="text-sm text-gray-500">Aucun historique.</p>}
+            </div>
+          </Card>
+
           {assignments.map(assignment => (
             <Card key={assignment.id} className="hover:shadow-lg transition-shadow">
               <div className="flex justify-between items-start">
