@@ -106,12 +106,42 @@ export const authService = {
       lastName: backendUser.lastname,
       role: backendUser.role,
       avatar: backendUser.profile_picture,
+      classId: backendUser.class_id?.toString(),
       createdAt: backendUser.created_at,
+      company: backendUser.company,
+      phone: backendUser.phone,
     };
   },
 
   logout: async (): Promise<void> => {
     await api.post('/auth/logout');
+  },
+
+  updateProfile: async (updates: {
+    firstname: string;
+    lastname: string;
+    phone?: string;
+    company?: string;
+    profile_picture?: string;
+    job_title?: string;
+    class_id?: string | number | null;
+  }): Promise<User> => {
+    const response = await api.put('/auth/profile', updates);
+    const data = response.data;
+    return {
+      id: data.id.toString(),
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      role: data.role,
+      avatar: data.avatar,
+      classId: data.classId?.toString(),
+      createdAt: new Date().toISOString(),
+    };
+  },
+
+  changePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
+    await api.post('/auth/change-password', { oldPassword, newPassword });
   },
 };
 
@@ -120,12 +150,30 @@ export const authService = {
 export const userService = {
   getUser: async (userId: string): Promise<User> => {
     const { data } = await api.get(`/users/${userId}`);
-    return data;
+    return {
+      id: data.id.toString(),
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      role: data.role,
+      avatar: data.avatar,
+      classId: data.classId?.toString(),
+      createdAt: data.createdAt,
+    };
   },
 
   updateUser: async (userId: string, updates: UpdateUserRequest): Promise<User> => {
     const { data } = await api.patch(`/users/${userId}`, updates);
-    return data;
+    return {
+      id: data.id.toString(),
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      role: data.role,
+      avatar: data.avatar,
+      classId: data.classId?.toString(),
+      createdAt: data.createdAt,
+    };
   },
 
   deleteUser: async (userId: string): Promise<void> => {
@@ -143,7 +191,13 @@ export const userService = {
 export const classService = {
   getClass: async (classId: string): Promise<Class> => {
     const { data } = await api.get(`/classes/${classId}`);
-    return data;
+    return {
+      id: data.id.toString(),
+      name: data.name,
+      description: data.description,
+      members: data.members || [],
+      instructors: data.instructors || [],
+    };
   },
 
   getClassMembers: async (classId: string): Promise<User[]> => {
@@ -153,22 +207,72 @@ export const classService = {
 
   getClassRequirements: async (classId: string): Promise<Requirement[]> => {
     const { data } = await api.get(`/classes/${classId}/requirements`);
-    return data;
+    return (data || []).map((req: any) => ({
+      id: req.id.toString(),
+      title: req.title,
+      description: req.description,
+      dueDate: req.dueDate,
+      status: req.status,
+      classId: req.classId?.toString(),
+      submissions: req.submissions?.map((sub: any) => ({
+        id: sub.id.toString(),
+        requirementId: sub.requirementId.toString(),
+        userId: sub.userId.toString(),
+        filePath: sub.filePath,
+        fileName: sub.fileName,
+        status: sub.status,
+        feedback: sub.feedback,
+        submittedAt: sub.submittedAt,
+      })),
+      createdAt: req.createdAt,
+    }));
   },
 
   getClassEvents: async (classId: string): Promise<Event[]> => {
     const { data } = await api.get(`/classes/${classId}/events`);
-    return data;
+    return (data || []).map((event: any) => ({
+      id: event.id.toString(),
+      title: event.title,
+      description: event.description,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      classId: event.classId?.toString(),
+      type: event.type,
+    }));
   },
 
   createEvent: async (classId: string, eventData: CreateEventRequest): Promise<Event> => {
     const { data } = await api.post(`/classes/${classId}/events`, eventData);
-    return data;
+    return {
+      id: data.id.toString(),
+      title: data.title,
+      description: data.description,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      classId: data.classId?.toString(),
+      type: data.type,
+    };
+  },
+
+  getMyClasses: async (): Promise<{ id: string; name: string }[]> => {
+    const { data } = await api.get('/classes');
+    return (data || []).map((cls: any) => ({
+      id: cls.id?.toString(),
+      name: cls.name,
+    }));
   },
 
   updateEvent: async (classId: string, eventId: string, updates: Partial<CreateEventRequest>): Promise<Event> => {
     const { data } = await api.patch(`/classes/${classId}/events/${eventId}`, updates);
-    return data;
+    return {
+      id: data.id.toString(),
+      title: data.title,
+      description: data.description,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      classId: data.classId?.toString(),
+      type: data.type,
+    };
   },
 
   deleteEvent: async (classId: string, eventId: string): Promise<void> => {
@@ -181,17 +285,42 @@ export const classService = {
 export const requirementService = {
   getRequirement: async (requirementId: string): Promise<Requirement> => {
     const { data } = await api.get(`/requirements/${requirementId}`);
-    return data;
+    return {
+      id: data.id.toString(),
+      title: data.title,
+      description: data.description,
+      dueDate: data.dueDate,
+      status: data.status,
+      classId: data.classId?.toString(),
+      submissions: data.submissions,
+      createdAt: data.createdAt,
+    };
   },
 
   createRequirement: async (requirementData: CreateRequirementRequest): Promise<Requirement> => {
     const { data } = await api.post('/requirements', requirementData);
-    return data;
+    return {
+      id: data.id.toString(),
+      title: data.title,
+      description: data.description,
+      dueDate: data.dueDate,
+      status: data.status,
+      classId: data.classId?.toString(),
+      createdAt: data.createdAt,
+    };
   },
 
   updateRequirement: async (requirementId: string, updates: UpdateRequirementRequest): Promise<Requirement> => {
     const { data } = await api.patch(`/requirements/${requirementId}`, updates);
-    return data;
+    return {
+      id: data.id.toString(),
+      title: data.title,
+      description: data.description,
+      dueDate: data.dueDate,
+      status: data.status,
+      classId: data.classId?.toString(),
+      createdAt: data.createdAt,
+    };
   },
 
   deleteRequirement: async (requirementId: string): Promise<void> => {
@@ -200,7 +329,16 @@ export const requirementService = {
 
   getSubmissions: async (requirementId: string): Promise<Submission[]> => {
     const { data } = await api.get(`/requirements/${requirementId}/submissions`);
-    return data;
+    return (data || []).map((sub: any) => ({
+      id: sub.id.toString(),
+      requirementId: sub.requirementId.toString(),
+      userId: sub.userId.toString(),
+      filePath: sub.filePath,
+      fileName: sub.fileName,
+      status: sub.status,
+      feedback: sub.feedback,
+      submittedAt: sub.submittedAt,
+    }));
   },
 
   submitRequirement: async (requirementId: string, file: File): Promise<Submission> => {
@@ -212,7 +350,16 @@ export const requirementService = {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return data;
+    return {
+      id: data.id.toString(),
+      requirementId: data.requirementId.toString(),
+      userId: data.userId.toString(),
+      filePath: data.filePath,
+      fileName: data.fileName,
+      status: data.status,
+      feedback: data.feedback,
+      submittedAt: data.submittedAt,
+    };
   },
 
   updateSubmissionStatus: async (
@@ -225,7 +372,16 @@ export const requirementService = {
       status,
       feedback,
     });
-    return data;
+    return {
+      id: data.id.toString(),
+      requirementId: data.requirementId.toString(),
+      userId: data.userId.toString(),
+      filePath: data.filePath,
+      fileName: data.fileName,
+      status: data.status,
+      feedback: data.feedback,
+      submittedAt: data.submittedAt,
+    };
   },
 };
 

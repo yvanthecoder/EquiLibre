@@ -1,13 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { UserIcon, EnvelopeIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import EditProfileModal from '../components/Profile/EditProfileModal';
+import ChangePasswordModal from '../components/Profile/ChangePasswordModal';
+import { classService } from '../services/api.service';
+import toast from 'react-hot-toast';
+import { Modal } from '../components/UI/Modal';
+import { useNotifications } from '../hooks/useNotifications';
 
 export const Profile: React.FC = () => {
   const { user } = useAuth();
+  const [showEdit, setShowEdit] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [className, setClassName] = useState<string | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showPrefs, setShowPrefs] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('pref_darkmode');
+    return saved === 'true';
+  });
+  const [emailNotif, setEmailNotif] = useState(true);
+  const { notifications } = useNotifications();
 
   if (!user) {
     return (
@@ -27,6 +44,28 @@ export const Profile: React.FC = () => {
     };
     return roles[role as keyof typeof roles] || role;
   };
+
+  useEffect(() => {
+    const loadClass = async () => {
+      if (!user.classId) return;
+      try {
+        const cls = await classService.getClass(user.classId);
+        setClassName(cls.name);
+      } catch {
+        setClassName(null);
+      }
+    };
+    loadClass();
+  }, [user.classId]);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('pref_darkmode', String(darkMode));
+  }, [darkMode]);
 
   return (
     <div className="space-y-6">
@@ -94,6 +133,29 @@ export const Profile: React.FC = () => {
                     <span className="text-gray-900">{getRoleLabel(user.role)}</span>
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Téléphone
+                  </label>
+                  <span className="text-gray-900">{user.phone || 'Non renseigné'}</span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Société
+                  </label>
+                  <span className="text-gray-900">{user.company || 'Non renseignée'}</span>
+                </div>
+
+                {user.classId && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Classe
+                    </label>
+                    <span className="text-gray-900">{className || `Classe #${user.classId}`}</span>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -109,9 +171,12 @@ export const Profile: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <Button variant="primary">
+            <div className="mt-6 pt-6 border-t border-gray-200 flex gap-3">
+              <Button variant="primary" onClick={() => setShowEdit(true)}>
                 Modifier le profil
+              </Button>
+              <Button variant="outline" onClick={() => setShowPassword(true)}>
+                Changer le mot de passe
               </Button>
             </div>
           </Card>
@@ -144,19 +209,104 @@ export const Profile: React.FC = () => {
               Paramètres
             </h3>
             <div className="space-y-3">
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setShowPassword(true)}>
                 Changer le mot de passe
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => setShowNotifications(true)}
+              >
                 Notifications
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => setShowPrefs(true)}
+              >
                 Préférences
               </Button>
             </div>
           </Card>
         </div>
       </div>
+
+      <EditProfileModal isOpen={showEdit} onClose={() => setShowEdit(false)} />
+      <ChangePasswordModal isOpen={showPassword} onClose={() => setShowPassword(false)} />
+
+      {/* Notifications Modal */}
+      <Modal
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        title="Mes notifications"
+        size="md"
+      >
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {notifications && notifications.length > 0 ? (
+            notifications.map((n) => (
+              <Card key={n.id}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-gray-900">{n.title}</span>
+                  <span className="text-xs text-gray-500">
+                    {format(new Date(n.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700">{n.message}</p>
+                <div className="mt-1 text-xs text-gray-500">{n.type}</div>
+              </Card>
+            ))
+          ) : (
+            <p className="text-gray-600">Aucune notification.</p>
+          )}
+        </div>
+      </Modal>
+
+      {/* Preferences Modal */}
+      <Modal
+        isOpen={showPrefs}
+        onClose={() => setShowPrefs(false)}
+        title="Préférences"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Mode sombre</p>
+              <p className="text-sm text-gray-600">Basculer l'apparence du site</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={darkMode}
+              onChange={(e) => setDarkMode(e.target.checked)}
+              className="h-4 w-4"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Notifications email</p>
+              <p className="text-sm text-gray-600">Recevoir un email pour les alertes importantes</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={emailNotif}
+              onChange={(e) => setEmailNotif(e.target.checked)}
+              className="h-4 w-4"
+            />
+          </div>
+            <div className="flex justify-end">
+              <Button
+                onClick={() => {
+                  toast.success('Préférences enregistrées');
+                  setShowPrefs(false);
+                }}
+              >
+                Enregistrer
+              </Button>
+            </div>
+        </div>
+      </Modal>
     </div>
   );
 };

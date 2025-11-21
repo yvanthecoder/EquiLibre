@@ -126,6 +126,9 @@ export interface User {
   role: UserRole;
   avatar?: string;
   classId?: string;
+   phone?: string;
+   company?: string;
+   jobTitle?: string;
   createdAt: string;
 }
 

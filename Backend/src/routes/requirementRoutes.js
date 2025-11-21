@@ -1,4 +1,7 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const router = express.Router();
 const {
     getAllRequirements,
@@ -7,58 +10,42 @@ const {
     updateRequirement,
     validateRequirement,
     deleteRequirement,
-    getRequirementStats
+    getRequirementStats,
+    getRequirementSubmissions,
+    submitRequirement,
+    updateSubmissionStatus
 } = require('../controllers/requirementController');
 const { authenticate } = require('../middlewares/auth');
-const { requireAdmin, requireTuteurOrAdmin, requirePermission } = require('../middlewares/roleCheck');
+const { requireTuteurOrAdmin, requirePermission } = require('../middlewares/roleCheck');
 
-/**
- * @route   GET /api/requirements
- * @desc    Obtenir tous les requirements (selon le rôle et filtres)
- * @access  Private (Tous les rôles)
- */
+// Configuration du stockage des fichiers
+const uploadDir = path.join(__dirname, '../../uploads/requirements');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => {
+        const safeName = file.originalname.replace(/\s+/g, '_');
+        cb(null, `${Date.now()}-${safeName}`);
+    }
+});
+const upload = multer({ storage });
+
+// Routes
 router.get('/', authenticate, getAllRequirements);
-
-/**
- * @route   GET /api/requirements/:id
- * @desc    Obtenir un requirement par ID
- * @access  Private (Tous les rôles)
- */
+router.get('/stats/:classId', authenticate, requireTuteurOrAdmin, getRequirementStats);
 router.get('/:id', authenticate, getRequirementById);
+router.get('/:id/submissions', authenticate, getRequirementSubmissions);
 
-/**
- * @route   POST /api/requirements
- * @desc    Créer un nouveau requirement
- * @access  Private (Admin uniquement)
- */
 router.post('/', authenticate, requirePermission('canCreateRequirements'), createRequirement);
-
-/**
- * @route   PUT /api/requirements/:id
- * @desc    Mettre à jour un requirement
- * @access  Private (Admin uniquement)
- */
-router.put('/:id', authenticate, requirePermission('canEditRequirements'), updateRequirement);
-
-/**
- * @route   POST /api/requirements/:id/validate
- * @desc    Valider ou refuser un requirement
- * @access  Private (Tuteur ou Admin)
- */
+router.patch('/:id', authenticate, requirePermission('canEditRequirements'), updateRequirement);
 router.post('/:id/validate', authenticate, requirePermission('canValidateRequirements'), validateRequirement);
 
-/**
- * @route   DELETE /api/requirements/:id
- * @desc    Supprimer un requirement
- * @access  Private (Admin uniquement)
- */
-router.delete('/:id', authenticate, requirePermission('canDeleteRequirements'), deleteRequirement);
+router.post('/:id/submissions', authenticate, upload.single('file'), submitRequirement);
+router.patch('/:id/submissions/:submissionId', authenticate, requireTuteurOrAdmin, updateSubmissionStatus);
 
-/**
- * @route   GET /api/requirements/stats/:classId
- * @desc    Obtenir les statistiques des requirements d'une classe
- * @access  Private (Tuteur ou Admin)
- */
-router.get('/stats/:classId', authenticate, requireTuteurOrAdmin, getRequirementStats);
+router.delete('/:id', authenticate, requirePermission('canDeleteRequirements'), deleteRequirement);
 
 module.exports = router;

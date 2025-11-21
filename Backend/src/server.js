@@ -11,6 +11,7 @@ const requirementRoutes = require('./routes/requirementRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const assignmentRoutes = require('./routes/assignmentRoutes');
 const messageRoutes = require('./routes/messageRoutes');
+const fileRoutes = require('./routes/fileRoutes');
 
 // Initialiser l'application Express
 const app = express();
@@ -21,7 +22,7 @@ const app = express();
 
 // CORS - Autoriser les requêtes depuis le frontend
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true
 }));
 
@@ -85,6 +86,7 @@ app.use('/api/requirements', requirementRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/files', fileRoutes);
 
 // =============================================
 // GESTION DES ERREURS
@@ -133,7 +135,7 @@ app.use((err, req, res, next) => {
 // DÉMARRAGE DU SERVEUR
 // =============================================
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 const startServer = async () => {
     try {

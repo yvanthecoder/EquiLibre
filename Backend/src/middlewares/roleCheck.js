@@ -90,7 +90,7 @@ const requireOwnerOrAdmin = (userIdParam = 'id') => {
 // Middleware pour vérifier l'accès à une classe
 const requireClassAccess = async (req, res, next) => {
     try {
-        const classId = parseInt(req.params.classId);
+        const classId = parseInt(req.params.classId || req.params.id);
         const userId = req.user.userId;
         const userRole = req.user.role;
 

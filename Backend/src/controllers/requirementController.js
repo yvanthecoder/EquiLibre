@@ -1,5 +1,43 @@
 const Requirement = require('../models/Requirement');
+const RequirementSubmission = require('../models/RequirementSubmission');
 const { ERROR_MESSAGES, USER_ROLES, REQUIREMENT_STATUS } = require('../config/constants');
+
+// Helper pour normaliser les requirements vers le frontend
+const mapRequirement = (reqRow) => {
+    if (!reqRow) return null;
+    return {
+        id: reqRow.id,
+        title: reqRow.title,
+        description: reqRow.description,
+        classId: reqRow.classId,
+        createdBy: reqRow.createdBy,
+        dueDate: reqRow.dueDate,
+        status: reqRow.status,
+        createdAt: reqRow.createdAt,
+        updatedAt: reqRow.updatedAt,
+        validationComment: reqRow.validationComment,
+        validatedAt: reqRow.validatedAt,
+        validatedBy: reqRow.validatedBy
+    };
+};
+
+const mapSubmission = (row) => ({
+    id: row.id,
+    requirementId: row.requirementId,
+    userId: row.userId,
+    fileName: row.fileName,
+    filePath: row.filePath,
+    fileSize: row.fileSize,
+    mimeType: row.mimeType,
+    status: row.status,
+    feedback: row.feedback,
+    submittedAt: row.submittedAt,
+    validatedAt: row.validatedAt,
+    updatedAt: row.updatedAt,
+    firstname: row.firstname,
+    lastname: row.lastname,
+    email: row.email
+});
 
 // Obtenir tous les requirements
 const getAllRequirements = async (req, res) => {
@@ -11,25 +49,17 @@ const getAllRequirements = async (req, res) => {
         let requirements;
 
         if (classId) {
-            // Requirements d'une classe spécifique
-            requirements = await Requirement.findByClassId(parseInt(classId));
+            requirements = await Requirement.findByClassId(parseInt(classId, 10));
         } else if (userRole === USER_ROLES.ADMIN) {
-            // Admin voit tout (à implémenter si besoin)
             requirements = await Requirement.findByUserId(userId);
         } else {
-            // Utilisateurs voient leurs requirements
             requirements = await Requirement.findByUserId(userId);
         }
 
-        res.json({
-            success: true,
-            data: requirements,
-            count: requirements.length
-        });
-
+        return res.json(requirements.map(mapRequirement));
     } catch (error) {
-        console.error('Erreur lors de la récupération des requirements:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la rAccupAcration des requirements:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
@@ -39,8 +69,7 @@ const getAllRequirements = async (req, res) => {
 // Obtenir un requirement par ID
 const getRequirementById = async (req, res) => {
     try {
-        const requirementId = parseInt(req.params.id);
-
+        const requirementId = parseInt(req.params.id, 10);
         const requirement = await Requirement.findById(requirementId);
 
         if (!requirement) {
@@ -50,24 +79,20 @@ const getRequirementById = async (req, res) => {
             });
         }
 
-        res.json({
-            success: true,
-            data: requirement
-        });
-
+        return res.json(mapRequirement(requirement));
     } catch (error) {
-        console.error('Erreur lors de la récupération du requirement:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la rAccupAcration du requirement:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
     }
 };
 
-// Créer un requirement (Admin uniquement)
+// CrAcer un requirement (Admin uniquement)
 const createRequirement = async (req, res) => {
     try {
-        const { title, description, classId, deadline } = req.body;
+        const { title, description, classId, dueDate } = req.body;
 
         if (!title || !description || !classId) {
             return res.status(400).json({
@@ -80,20 +105,15 @@ const createRequirement = async (req, res) => {
         const requirement = await Requirement.create({
             title,
             description,
-            classId: parseInt(classId),
+            classId: parseInt(classId, 10),
             createdBy: req.user.userId,
-            deadline
+            dueDate
         });
 
-        res.status(201).json({
-            success: true,
-            message: 'Requirement créé avec succès',
-            data: requirement
-        });
-
+        return res.status(201).json(mapRequirement(requirement));
     } catch (error) {
-        console.error('Erreur lors de la création du requirement:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la crAcation du requirement:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR,
             detail: error.message
@@ -101,11 +121,16 @@ const createRequirement = async (req, res) => {
     }
 };
 
-// Mettre à jour un requirement (Admin)
+// Mettre A� jour un requirement
 const updateRequirement = async (req, res) => {
     try {
-        const requirementId = parseInt(req.params.id);
-        const updates = req.body;
+        const requirementId = parseInt(req.params.id, 10);
+        const updates = {};
+
+        if (req.body.title !== undefined) updates.title = req.body.title;
+        if (req.body.description !== undefined) updates.description = req.body.description;
+        if (req.body.dueDate !== undefined) updates.due_date = req.body.dueDate;
+        if (req.body.status !== undefined) updates.status = req.body.status;
 
         const updatedRequirement = await Requirement.update(requirementId, updates);
 
@@ -116,15 +141,10 @@ const updateRequirement = async (req, res) => {
             });
         }
 
-        res.json({
-            success: true,
-            message: 'Requirement mis à jour avec succès',
-            data: updatedRequirement
-        });
-
+        return res.json(mapRequirement(updatedRequirement));
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du requirement:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la mise A� jour du requirement:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR,
             detail: error.message
@@ -135,15 +155,14 @@ const updateRequirement = async (req, res) => {
 // Valider/Refuser un requirement (Tuteur ou Admin)
 const validateRequirement = async (req, res) => {
     try {
-        const requirementId = parseInt(req.params.id);
+        const requirementId = parseInt(req.params.id, 10);
         const { status, comment } = req.body;
 
-        // Vérifier que le statut est valide
-        if (!status || ![REQUIREMENT_STATUS.APPROVED, REQUIREMENT_STATUS.REJECTED].includes(status)) {
+        if (!status || ![REQUIREMENT_STATUS.VALIDATED, REQUIREMENT_STATUS.REJECTED].includes(status)) {
             return res.status(400).json({
                 success: false,
                 message: ERROR_MESSAGES.BAD_REQUEST,
-                detail: 'Statut invalide (APPROVED ou REJECTED)'
+                detail: 'Statut invalide (VALIDATED ou REJECTED)'
             });
         }
 
@@ -161,15 +180,10 @@ const validateRequirement = async (req, res) => {
             });
         }
 
-        res.json({
-            success: true,
-            message: `Requirement ${status === REQUIREMENT_STATUS.APPROVED ? 'approuvé' : 'refusé'} avec succès`,
-            data: validatedRequirement
-        });
-
+        return res.json(mapRequirement(validatedRequirement));
     } catch (error) {
         console.error('Erreur lors de la validation du requirement:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
@@ -179,18 +193,12 @@ const validateRequirement = async (req, res) => {
 // Supprimer un requirement (Admin)
 const deleteRequirement = async (req, res) => {
     try {
-        const requirementId = parseInt(req.params.id);
-
+        const requirementId = parseInt(req.params.id, 10);
         await Requirement.delete(requirementId);
-
-        res.json({
-            success: true,
-            message: 'Requirement supprimé avec succès'
-        });
-
+        return res.json({ success: true });
     } catch (error) {
         console.error('Erreur lors de la suppression du requirement:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
@@ -200,18 +208,84 @@ const deleteRequirement = async (req, res) => {
 // Obtenir les statistiques des requirements d'une classe
 const getRequirementStats = async (req, res) => {
     try {
-        const classId = parseInt(req.params.classId);
-
+        const classId = parseInt(req.params.classId, 10);
         const stats = await Requirement.getStats(classId);
+        return res.json(stats);
+    } catch (error) {
+        console.error('Erreur lors de la rAccupAcration des statistiques:', error);
+        return res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR
+        });
+    }
+};
 
-        res.json({
-            success: true,
-            data: stats
+// RAccupAcration des soumissions d'un requirement
+const getRequirementSubmissions = async (req, res) => {
+    try {
+        const requirementId = parseInt(req.params.id, 10);
+        const submissions = await RequirementSubmission.findByRequirement(requirementId);
+        return res.json(submissions.map(mapSubmission));
+    } catch (error) {
+        console.error('Erreur lors de la rAccupAcration des soumissions:', error);
+        return res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR
+        });
+    }
+};
+
+// Soumettre un document pour un requirement
+const submitRequirement = async (req, res) => {
+    try {
+        const requirementId = parseInt(req.params.id, 10);
+        const userId = req.user.userId;
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Aucun fichier transmis'
+            });
+        }
+
+        const submission = await RequirementSubmission.create({
+            requirementId,
+            userId,
+            fileName: file.originalname,
+            filePath: file.path,
+            fileSize: file.size,
+            mimeType: file.mimetype
         });
 
+        return res.status(201).json(mapSubmission(submission));
     } catch (error) {
-        console.error('Erreur lors de la récupération des statistiques:', error);
-        res.status(500).json({
+        console.error('Erreur lors de l\'envoi de la soumission:', error);
+        return res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR
+        });
+    }
+};
+
+// Mettre A� jour une soumission (Validation ou rejet)
+const updateSubmissionStatus = async (req, res) => {
+    try {
+        const submissionId = parseInt(req.params.submissionId, 10);
+        const { status, feedback } = req.body;
+
+        if (!status || ![REQUIREMENT_STATUS.VALIDATED, REQUIREMENT_STATUS.REJECTED].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Statut invalide'
+            });
+        }
+
+        const updated = await RequirementSubmission.updateStatus(submissionId, status, feedback);
+        return res.json(mapSubmission(updated));
+    } catch (error) {
+        console.error('Erreur lors de la mise A� jour de la soumission:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
@@ -225,5 +299,8 @@ module.exports = {
     updateRequirement,
     validateRequirement,
     deleteRequirement,
-    getRequirementStats
+    getRequirementStats,
+    getRequirementSubmissions,
+    submitRequirement,
+    updateSubmissionStatus
 };

@@ -1,5 +1,56 @@
 const Class = require('../models/Class');
+const Requirement = require('../models/Requirement');
+const RequirementSubmission = require('../models/RequirementSubmission');
+const Event = require('../models/Event');
 const { ERROR_MESSAGES, USER_ROLES } = require('../config/constants');
+
+const mapClass = (cls) => ({
+    id: cls.id,
+    name: cls.name,
+    description: cls.description,
+    year: cls.year,
+    level: cls.level,
+    tuteurId: cls.tuteur_id,
+    tuteur: cls.tuteur_firstname ? {
+        firstname: cls.tuteur_firstname,
+        lastname: cls.tuteur_lastname,
+        email: cls.tuteur_email
+    } : null,
+    memberCount: cls.member_count
+});
+
+const mapMember = (member) => ({
+    id: member.id,
+    email: member.email,
+    firstName: member.firstname,
+    lastName: member.lastname,
+    role: member.role,
+    company: member.company,
+    joinedAt: member.joined_at
+});
+
+const mapRequirement = (item) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    classId: item.classId,
+    createdBy: item.createdBy,
+    dueDate: item.dueDate,
+    status: item.status,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt
+});
+
+const mapSubmission = (row) => ({
+    id: row.id,
+    requirementId: row.requirementId,
+    userId: row.userId,
+    fileName: row.fileName,
+    filePath: row.filePath,
+    status: row.status,
+    feedback: row.feedback,
+    submittedAt: row.submittedAt
+});
 
 // Obtenir toutes les classes
 const getAllClasses = async (req, res) => {
@@ -9,28 +60,18 @@ const getAllClasses = async (req, res) => {
 
         let classes;
 
-        // Admin voit toutes les classes
         if (userRole === USER_ROLES.ADMIN) {
             classes = await Class.findAll();
-        }
-        // Tuteur voit ses classes
-        else if (userRole === USER_ROLES.TUTEUR_ECOLE) {
+        } else if (userRole === USER_ROLES.TUTEUR_ECOLE) {
             classes = await Class.findByTuteurId(userId);
-        }
-        // Étudiants et Maîtres d'app voient leurs classes
-        else {
+        } else {
             classes = await Class.findByUserId(userId);
         }
 
-        res.json({
-            success: true,
-            data: classes,
-            count: classes.length
-        });
-
+        return res.json(classes.map(mapClass));
     } catch (error) {
-        console.error('Erreur lors de la récupération des classes:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la rAccupAcration des classes:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
@@ -40,8 +81,7 @@ const getAllClasses = async (req, res) => {
 // Obtenir une classe par ID
 const getClassById = async (req, res) => {
     try {
-        const classId = parseInt(req.params.id);
-
+        const classId = parseInt(req.params.id, 10);
         const classData = await Class.findById(classId);
 
         if (!classData) {
@@ -51,21 +91,17 @@ const getClassById = async (req, res) => {
             });
         }
 
-        res.json({
-            success: true,
-            data: classData
-        });
-
+        return res.json(mapClass(classData));
     } catch (error) {
-        console.error('Erreur lors de la récupération de la classe:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la rAccupAcration de la classe:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
     }
 };
 
-// Créer une nouvelle classe (Admin ou Tuteur)
+// CrAcer une nouvelle classe (Admin ou Tuteur)
 const createClass = async (req, res) => {
     try {
         const { name, description, year, level, tuteurId } = req.body;
@@ -74,7 +110,7 @@ const createClass = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: ERROR_MESSAGES.BAD_REQUEST,
-                detail: 'Le nom et l\'année sont requis'
+                detail: 'Le nom et l\'annAce sont requis'
             });
         }
 
@@ -86,15 +122,10 @@ const createClass = async (req, res) => {
             tuteurId
         });
 
-        res.status(201).json({
-            success: true,
-            message: 'Classe créée avec succès',
-            data: newClass
-        });
-
+        return res.status(201).json(mapClass(newClass));
     } catch (error) {
-        console.error('Erreur lors de la création de la classe:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la crAcation de la classe:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR,
             detail: error.message
@@ -102,10 +133,10 @@ const createClass = async (req, res) => {
     }
 };
 
-// Mettre à jour une classe
+// Mettre A� jour une classe
 const updateClass = async (req, res) => {
     try {
-        const classId = parseInt(req.params.id);
+        const classId = parseInt(req.params.id, 10);
         const updates = req.body;
 
         const updatedClass = await Class.update(classId, updates);
@@ -117,15 +148,10 @@ const updateClass = async (req, res) => {
             });
         }
 
-        res.json({
-            success: true,
-            message: 'Classe mise à jour avec succès',
-            data: updatedClass
-        });
-
+        return res.json(mapClass(updatedClass));
     } catch (error) {
-        console.error('Erreur lors de la mise à jour de la classe:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la mise A� jour de la classe:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR,
             detail: error.message
@@ -136,18 +162,12 @@ const updateClass = async (req, res) => {
 // Supprimer une classe (Admin)
 const deleteClass = async (req, res) => {
     try {
-        const classId = parseInt(req.params.id);
-
+        const classId = parseInt(req.params.id, 10);
         await Class.delete(classId);
-
-        res.json({
-            success: true,
-            message: 'Classe désactivée avec succès'
-        });
-
+        return res.json({ success: true });
     } catch (error) {
         console.error('Erreur lors de la suppression de la classe:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
@@ -157,29 +177,22 @@ const deleteClass = async (req, res) => {
 // Obtenir les membres d'une classe
 const getClassMembers = async (req, res) => {
     try {
-        const classId = parseInt(req.params.id);
-
+        const classId = parseInt(req.params.id, 10);
         const members = await Class.getMembers(classId);
-
-        res.json({
-            success: true,
-            data: members,
-            count: members.length
-        });
-
+        return res.json(members.map(mapMember));
     } catch (error) {
-        console.error('Erreur lors de la récupération des membres:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la rAccupAcration des membres:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
     }
 };
 
-// Ajouter un membre à une classe (Admin ou Tuteur)
+// Ajouter un membre A� une classe (Admin ou Tuteur)
 const addMember = async (req, res) => {
     try {
-        const classId = parseInt(req.params.id);
+        const classId = parseInt(req.params.id, 10);
         const { userId } = req.body;
 
         if (!userId) {
@@ -191,16 +204,10 @@ const addMember = async (req, res) => {
         }
 
         const member = await Class.addMember(classId, userId);
-
-        res.status(201).json({
-            success: true,
-            message: 'Membre ajouté avec succès',
-            data: member
-        });
-
+        return res.status(201).json(member);
     } catch (error) {
         console.error('Erreur lors de l\'ajout du membre:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
@@ -210,19 +217,13 @@ const addMember = async (req, res) => {
 // Retirer un membre d'une classe (Admin ou Tuteur)
 const removeMember = async (req, res) => {
     try {
-        const classId = parseInt(req.params.id);
-        const userId = parseInt(req.params.userId);
-
+        const classId = parseInt(req.params.id, 10);
+        const userId = parseInt(req.params.userId, 10);
         await Class.removeMember(classId, userId);
-
-        res.json({
-            success: true,
-            message: 'Membre retiré avec succès'
-        });
-
+        return res.json({ success: true });
     } catch (error) {
         console.error('Erreur lors du retrait du membre:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
@@ -233,8 +234,6 @@ const removeMember = async (req, res) => {
 const getAvailableClasses = async (req, res) => {
     try {
         const classes = await Class.findAll();
-
-        // Ne retourner que les infos essentielles
         const availableClasses = classes.map(cls => ({
             id: cls.id,
             name: cls.name,
@@ -243,14 +242,107 @@ const getAvailableClasses = async (req, res) => {
             level: cls.level
         }));
 
-        res.json({
-            success: true,
-            data: availableClasses
-        });
-
+        return res.json(availableClasses);
     } catch (error) {
-        console.error('Erreur lors de la récupération des classes disponibles:', error);
-        res.status(500).json({
+        console.error('Erreur lors de la rAccupAcration des classes disponibles:', error);
+        return res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR
+        });
+    }
+};
+
+// RAccupAcrer les requirements d'une classe (avec soumissions)
+const getClassRequirements = async (req, res) => {
+    try {
+        const classId = parseInt(req.params.id, 10);
+        const requirements = await Requirement.findByClassId(classId);
+
+        const withSubmissions = await Promise.all(
+            requirements.map(async (reqItem) => {
+                const submissions = await RequirementSubmission.findByRequirement(reqItem.id);
+                return {
+                    ...mapRequirement(reqItem),
+                    submissions: submissions.map(mapSubmission)
+                };
+            })
+        );
+
+        return res.json(withSubmissions);
+    } catch (error) {
+        console.error('Erreur lors de la rAccupAcration des requirements de la classe:', error);
+        return res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR
+        });
+    }
+};
+
+// RAccupAcrer les AcvAcnements d'une classe
+const getClassEvents = async (req, res) => {
+    try {
+        const classId = parseInt(req.params.id, 10);
+        const events = await Event.findByClassId(classId);
+        return res.json(events);
+    } catch (error) {
+        console.error('Erreur lors de la rAccupAcration des AcvAcnements:', error);
+        return res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR
+        });
+    }
+};
+
+// CrAcer un AcvAcnement de classe
+const createEvent = async (req, res) => {
+    try {
+        const classId = parseInt(req.params.id, 10);
+        const event = await Event.create({
+            ...req.body,
+            classId,
+            userId: req.user.userId
+        });
+        return res.status(201).json(event);
+    } catch (error) {
+        console.error('Erreur lors de la crAcation de l\'AcvAcnement:', error);
+        return res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR
+        });
+    }
+};
+
+// Mettre A� jour un AcvAcnement
+const updateEvent = async (req, res) => {
+    try {
+        const eventId = parseInt(req.params.eventId, 10);
+        const payload = {};
+        if (req.body.title !== undefined) payload.title = req.body.title;
+        if (req.body.description !== undefined) payload.description = req.body.description;
+        if (req.body.startDate !== undefined) payload.start_date = req.body.startDate;
+        if (req.body.endDate !== undefined) payload.end_date = req.body.endDate;
+        if (req.body.type !== undefined) payload.type = req.body.type;
+
+        const updated = await Event.update(eventId, payload);
+        return res.json(updated);
+    } catch (error) {
+        console.error('Erreur lors de la mise A� jour de l\'AcvAcnement:', error);
+        return res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR
+        });
+    }
+};
+
+// Supprimer un AcvAcnement
+const deleteEvent = async (req, res) => {
+    try {
+        const eventId = parseInt(req.params.eventId, 10);
+        await Event.delete(eventId);
+        return res.json({ success: true });
+    } catch (error) {
+        console.error('Erreur lors de la suppression de l\'AcvAcnement:', error);
+        return res.status(500).json({
             success: false,
             message: ERROR_MESSAGES.SERVER_ERROR
         });
@@ -266,5 +358,10 @@ module.exports = {
     getClassMembers,
     addMember,
     removeMember,
-    getAvailableClasses
+    getAvailableClasses,
+    getClassRequirements,
+    getClassEvents,
+    createEvent,
+    updateEvent,
+    deleteEvent
 };
