@@ -27,6 +27,7 @@ const requireAdmin = requireRole(USER_ROLES.ADMIN);
 
 // Middleware pour vérifier si l'utilisateur est tuteur ou admin
 const requireTuteurOrAdmin = requireRole(USER_ROLES.TUTEUR_ECOLE, USER_ROLES.ADMIN);
+const requireTuteurMaitreOrAdmin = requireRole(USER_ROLES.TUTEUR_ECOLE, USER_ROLES.MAITRE_APP, USER_ROLES.ADMIN);
 
 // Middleware pour vérifier si l'utilisateur est étudiant (alternant ou classique)
 const requireStudent = requireRole(USER_ROLES.ALTERNANT, USER_ROLES.ETUDIANT_CLASSIQUE);
@@ -90,7 +91,7 @@ const requireOwnerOrAdmin = (userIdParam = 'id') => {
 // Middleware pour vérifier l'accès à une classe
 const requireClassAccess = async (req, res, next) => {
     try {
-        const classId = parseInt(req.params.classId);
+        const classId = parseInt(req.params.classId || req.params.id);
         const userId = req.user.userId;
         const userRole = req.user.role;
 
@@ -109,7 +110,17 @@ const requireClassAccess = async (req, res, next) => {
             }
         }
 
-        // Étudiant ou Maître d'app : vérifier qu'il est membre de la classe
+        // Maître d'app : accès si un de ses apprentis est dans la classe
+        if (userRole === USER_ROLES.MAITRE_APP) {
+            const Assignment = require('../models/Assignment');
+            const mine = await Assignment.findByMaitreId(userId);
+            const hasClass = mine.some((a) => a.class_id === classId);
+            if (hasClass) {
+                return next();
+            }
+        }
+
+        // Étudiant : vérifier qu'il est membre de la classe
         const userClasses = await Class.findByUserId(userId);
         const hasAccess = userClasses.some(c => c.id === classId);
 
@@ -136,6 +147,7 @@ module.exports = {
     requireRole,
     requireAdmin,
     requireTuteurOrAdmin,
+    requireTuteurMaitreOrAdmin,
     requireStudent,
     requirePermission,
     requireOwnerOrAdmin,

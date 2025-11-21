@@ -9,7 +9,12 @@ const {
     getClassMembers,
     addMember,
     removeMember,
-    getAvailableClasses
+    getAvailableClasses,
+    getClassRequirements,
+    getClassEvents,
+    createEvent,
+    updateEvent,
+    deleteEvent
 } = require('../controllers/classController');
 const { authenticate } = require('../middlewares/auth');
 const { requireAdmin, requireTuteurOrAdmin, requireClassAccess } = require('../middlewares/roleCheck');
@@ -33,7 +38,12 @@ router.get('/', authenticate, getAllClasses);
  * @desc    Obtenir une classe par ID
  * @access  Private (Membres de la classe, Tuteur, Admin)
  */
-router.get('/:id', authenticate, getClassById);
+router.get('/:id', authenticate, requireClassAccess, getClassById);
+router.get('/:id/requirements', authenticate, requireClassAccess, getClassRequirements);
+router.get('/:id/events', authenticate, requireClassAccess, getClassEvents);
+router.post('/:id/events', authenticate, requireTuteurOrAdmin, requireClassAccess, createEvent);
+router.patch('/:id/events/:eventId', authenticate, requireTuteurOrAdmin, requireClassAccess, updateEvent);
+router.delete('/:id/events/:eventId', authenticate, requireTuteurOrAdmin, requireClassAccess, deleteEvent);
 
 /**
  * @route   POST /api/classes
@@ -61,7 +71,7 @@ router.delete('/:id', authenticate, requireAdmin, deleteClass);
  * @desc    Obtenir les membres d'une classe
  * @access  Private (Membres de la classe, Tuteur, Admin)
  */
-router.get('/:id/members', authenticate, getClassMembers);
+router.get('/:id/members', authenticate, requireClassAccess, getClassMembers);
 
 /**
  * @route   POST /api/classes/:id/members

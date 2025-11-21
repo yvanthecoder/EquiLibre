@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+import api from '../../lib/api';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface Class {
   id: number;
@@ -21,6 +20,7 @@ interface Class {
 }
 
 export const AdminClasses: React.FC = () => {
+  const navigate = useNavigate();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +43,10 @@ export const AdminClasses: React.FC = () => {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/classes`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.data.success) {
-        setClasses(response.data.data);
-      }
+      const response = await api.get('/classes');
+      const payload = response.data;
+      const data = Array.isArray(payload) ? payload : payload.data || payload?.classes || [];
+      setClasses(data);
     } catch (err) {
       console.error('Error fetching classes:', err);
       setError('Impossible de charger les classes');
@@ -61,7 +58,6 @@ export const AdminClasses: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
       const payload = {
         name: formData.name,
         description: formData.description,
@@ -72,14 +68,10 @@ export const AdminClasses: React.FC = () => {
 
       if (editingClass) {
         // Update existing class
-        await axios.put(`${API_URL}/api/classes/${editingClass.id}`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.put(`/classes/${editingClass.id}`, payload);
       } else {
         // Create new class
-        await axios.post(`${API_URL}/api/classes`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post(`/classes`, payload);
       }
 
       // Reset form and refresh
@@ -109,10 +101,7 @@ export const AdminClasses: React.FC = () => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette classe ?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_URL}/api/classes/${classId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/classes/${classId}`);
       fetchClasses();
     } catch (err) {
       console.error('Error deleting class:', err);
@@ -129,7 +118,10 @@ export const AdminClasses: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des Classes</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => window.history.back()}>← Retour</Button>
+          <h1 className="text-2xl font-bold text-gray-900">Gestion des Classes</h1>
+        </div>
         <Button onClick={() => setShowCreateModal(true)}>
           Créer une classe
         </Button>
@@ -177,7 +169,10 @@ export const AdminClasses: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex space-x-2 pt-3 border-t">
+              <div className="flex space-x-2 pt-3 border-t">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(`/admin/classes/${classItem.id}`)}>
+                    Détails
+                  </Button>
                   <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(classItem)}>
                     Modifier
                   </Button>

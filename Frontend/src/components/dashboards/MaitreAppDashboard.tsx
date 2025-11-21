@@ -1,26 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { Card } from '../UI/Card';
 import { Button } from '../UI/Button';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { assignmentService, Assignment } from '../../services/api.service';
+import { assignmentService, Assignment, fileService } from '../../services/api.service';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export const MaitreAppDashboard: React.FC = () => {
   const { user } = useAuth();
   const { notifications } = useNotifications();
+  const navigate = useNavigate();
   const [apprentices, setApprentices] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<any[]>([]);
 
-  // Fetch real apprentices data from API
   useEffect(() => {
     const fetchApprentices = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await assignmentService.getAllAssignments();
+        const filters: any = {};
+        if (user?.id) filters.maitreId = Number(user.id);
+        const data = await assignmentService.getAllAssignments(filters);
         setApprentices(data);
       } catch (err) {
         console.error('Error fetching apprentices:', err);
@@ -29,9 +34,23 @@ export const MaitreAppDashboard: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchApprentices();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const fetchFiles = async () => {
+      try {
+        const shared = await fileService.getSharedFiles();
+        const needSign = (shared || []).filter((f: any) => f.requiresSignature);
+        setPendingFiles(needSign);
+      } catch (err) {
+        console.error('Erreur chargement fichiers partagés', err);
+      }
+    };
+    fetchFiles();
   }, []);
+
+  const unread = useMemo(() => notifications?.filter((n) => !n.read).length || 0, [notifications]);
 
   return (
     <div className="space-y-6">
@@ -44,23 +63,22 @@ export const MaitreAppDashboard: React.FC = () => {
 
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
           <h3 className="text-sm font-medium opacity-90">Documents en attente</h3>
-          <p className="text-3xl font-bold mt-2">5</p>
+          <p className="text-3xl font-bold mt-2">{pendingFiles.length}</p>
         </Card>
 
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
           <h3 className="text-sm font-medium opacity-90">Notifications</h3>
-          <p className="text-3xl font-bold mt-2">{notifications?.filter(n => !n.read).length || 0}</p>
+          <p className="text-3xl font-bold mt-2">{unread}</p>
         </Card>
       </div>
 
       <Card className="bg-blue-50 border-blue-200">
         <div className="flex items-start space-x-3">
-          <span className="text-2xl">👔</span>
+          <span className="text-2xl">👥</span>
           <div>
             <h3 className="font-semibold text-gray-900">Rôle Maître d'Apprentissage</h3>
             <p className="text-sm text-gray-600 mt-1">
-              En tant que maître d'apprentissage, vous accompagnez vos alternants dans leur parcours professionnel.
-              Vous pouvez suivre leur progression, valider leurs documents et communiquer avec l'école.
+              Suivez vos alternants, validez leurs documents et restez en contact avec les tuteurs d'école.
             </p>
           </div>
         </div>
@@ -73,7 +91,7 @@ export const MaitreAppDashboard: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">
               Mes alternants
             </h2>
-            <Button variant="ghost" size="sm">Voir tout</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/admin/assignments')}>Voir tout</Button>
           </div>
           <div className="space-y-3">
             {loading ? (
@@ -102,16 +120,19 @@ export const MaitreAppDashboard: React.FC = () => {
                     {apprentice.class_name && (
                       <p>Classe: {apprentice.class_name}</p>
                     )}
+                    {apprentice.tuteur_firstname && (
+                      <p>Tuteur école: {apprentice.tuteur_firstname} {apprentice.tuteur_lastname}</p>
+                    )}
                     {apprentice.student_email && (
                       <p>Email: {apprentice.student_email}</p>
                     )}
                   </div>
                   <div className="flex space-x-2 mt-3">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate('/messages')}>
                       Contacter
                     </Button>
-                    <Button size="sm" variant="primary" className="flex-1">
-                      Voir profil
+                    <Button size="sm" variant="primary" className="flex-1" onClick={() => navigate('/requirements')}>
+                      Voir exigences
                     </Button>
                   </div>
                 </div>
@@ -124,32 +145,40 @@ export const MaitreAppDashboard: React.FC = () => {
         <Card>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              Documents à vérifier
+              Documents à vérifier / signer
             </h2>
-            <Button variant="ghost" size="sm">Voir tout</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/files')}>Voir tout</Button>
           </div>
           <div className="space-y-3">
-            <div className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">Rapport d'activité - Jean Dupont</h3>
-                  <p className="text-sm text-gray-600 mt-1">Soumis il y a 2 jours</p>
+            {pendingFiles.slice(0, 5).map((file: any) => (
+              <div key={file.id} className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{file.fileName}</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Ajouté le {file.uploadedAt ? format(new Date(file.uploadedAt), 'dd/MM/yyyy', { locale: fr }) : 'N/A'}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() =>
+                      fileService
+                        .signFile(file.id.toString())
+                        .then(() => toast.success('Signé'))
+                        .catch(() => toast.error('Erreur signature'))
+                    }
+                  >
+                    Signer
+                  </Button>
                 </div>
-                <Button size="sm" variant="primary">Vérifier</Button>
               </div>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">Convention de stage - Marie Martin</h3>
-                  <p className="text-sm text-gray-600 mt-1">Soumis il y a 3 jours</p>
-                </div>
-                <Button size="sm" variant="primary">Vérifier</Button>
-              </div>
-            </div>
-            <p className="text-gray-500 text-center py-4 text-sm">
-              2 documents en attente de vérification
-            </p>
+            ))}
+            {pendingFiles.length === 0 && (
+              <p className="text-gray-500 text-center py-4 text-sm">
+                Aucun document en attente
+              </p>
+            )}
           </div>
         </Card>
 
@@ -159,7 +188,7 @@ export const MaitreAppDashboard: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">
               Messages récents
             </h2>
-            <Button variant="ghost" size="sm">Voir tout</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/messages')}>Voir tout</Button>
           </div>
           <div className="space-y-3">
             <div className="p-3 bg-blue-50 rounded-md">
@@ -190,24 +219,19 @@ export const MaitreAppDashboard: React.FC = () => {
             Actions rapides
           </h2>
           <div className="space-y-2">
-            <Button className="w-full justify-start" variant="outline">
-              <span className="mr-2">👥</span>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/assignments')}>
               Voir tous mes alternants
             </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <span className="mr-2">💬</span>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/messages')}>
               Contacter le tuteur école
             </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <span className="mr-2">📄</span>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/files')}>
               Valider un document
             </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <span className="mr-2"> </span>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/reports')}>
               Voir les rapports
             </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <span className="mr-2">📅</span>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/calendar')}>
               Planifier un rendez-vous
             </Button>
           </div>

@@ -24,6 +24,7 @@ router.get('/:id', authenticate, requireOwnerOrAdmin('id'), getUserById);
  * @access  Private (Admin)
  */
 router.put('/:id', authenticate, requireAdmin, updateUser);
+router.patch('/:id', authenticate, requireAdmin, updateUser);
 
 /**
  * @route   DELETE /api/users/:id

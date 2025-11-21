@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useRequirements } from '../../hooks/useRequirements';
 import { useEvents } from '../../hooks/useEvents';
@@ -8,31 +9,37 @@ import { StatusBadge } from '../UI/StatusBadge';
 import { Button } from '../UI/Button';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import toast from 'react-hot-toast';
+import { CreateRequirementModal } from '../Requirements/CreateRequirementModal';
 
 export const InstructorDashboard: React.FC = () => {
   const { user } = useAuth();
   const { requirements } = useRequirements(user?.classId);
   const { events } = useEvents(user?.classId);
   const { notifications } = useNotifications();
+  const navigate = useNavigate();
+  const [showCreateRequirement, setShowCreateRequirement] = useState(false);
 
   const isAdmin = user?.role === 'ADMIN';
 
   // Get requirements with pending submissions
-  const requirementsWithSubmissions = requirements?.filter(
+  const requirementsWithSubmissions = (requirements || []).filter(
     req => req.submissions && req.submissions.some(sub => sub.status === 'SUBMITTED')
   );
 
   // Get all submitted documents
-  const submittedDocuments = requirements?.reduce((acc, req) => {
+  const submittedDocuments = (requirements || []).reduce((acc, req) => {
     const submitted = req.submissions?.filter(sub => sub.status === 'SUBMITTED') || [];
     return acc + submitted.length;
-  }, 0) || 0;
+  }, 0);
 
   // Get upcoming events
-  const upcomingEvents = events
-    ?.filter(event => new Date(event.startDate) > new Date())
+  const upcomingEvents = (events || [])
+    .filter(event => new Date(event.startDate) > new Date())
     .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
     .slice(0, 3);
+
+  const topRequirements = (requirements || []).slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -81,10 +88,12 @@ export const InstructorDashboard: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">
               Documents à valider
             </h2>
-            <Button variant="ghost" size="sm">Voir tout</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/requirements')}>
+              Voir tout
+            </Button>
           </div>
           <div className="space-y-3">
-            {requirementsWithSubmissions?.length ? (
+            {requirementsWithSubmissions.length ? (
               requirementsWithSubmissions.slice(0, 5).map(req => {
                 const pendingSubmissions = req.submissions?.filter(sub => sub.status === 'SUBMITTED').length || 0;
                 return (
@@ -113,7 +122,9 @@ export const InstructorDashboard: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">
               Prochains événements
             </h2>
-            <Button variant="ghost" size="sm">Gérer</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')}>
+              Gérer
+            </Button>
           </div>
           <div className="space-y-3">
             {upcomingEvents?.length ? (
@@ -144,11 +155,13 @@ export const InstructorDashboard: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">
               Exigences actives
             </h2>
-            <Button variant="ghost" size="sm">Créer</Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowCreateRequirement(true)}>
+              Créer
+            </Button>
           </div>
           <div className="space-y-3">
-            {requirements?.slice(0, 5).length ? (
-              requirements.slice(0, 5).map(req => (
+            {topRequirements.length ? (
+              topRequirements.map(req => (
                 <div key={req.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer">
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900">{req.title}</h3>
@@ -173,25 +186,51 @@ export const InstructorDashboard: React.FC = () => {
             Actions rapides
           </h2>
           <div className="space-y-2">
-            <Button className="w-full justify-start" variant="outline">
+            <Button
+              className="w-full justify-start"
+              variant="outline"
+              onClick={() => setShowCreateRequirement(true)}
+            >
               <span className="mr-2">➕</span>
               Créer une exigence
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button
+              className="w-full justify-start"
+              variant="outline"
+              onClick={() => navigate('/calendar')}
+            >
               <span className="mr-2">📅</span>
               Créer un événement
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button
+              className="w-full justify-start"
+              variant="outline"
+              onClick={() => {
+                if (user?.classId) {
+                  navigate(`/class/${user.classId}/members`);
+                } else {
+                  navigate('/classes');
+                }
+              }}
+            >
               <span className="mr-2">👥</span>
               Voir mes étudiants
             </Button>
             {isAdmin && (
               <>
-                <Button className="w-full justify-start" variant="outline">
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  onClick={() => navigate('/admin/classes')}
+                >
                   <span className="mr-2">🏫</span>
                   Gérer les classes
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  onClick={() => navigate('/admin/users')}
+                >
                   <span className="mr-2">⚙️</span>
                   Paramètres système
                 </Button>
@@ -200,6 +239,12 @@ export const InstructorDashboard: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      <CreateRequirementModal
+        isOpen={showCreateRequirement}
+        onClose={() => setShowCreateRequirement(false)}
+        classId={user?.classId}
+      />
     </div>
   );
 };

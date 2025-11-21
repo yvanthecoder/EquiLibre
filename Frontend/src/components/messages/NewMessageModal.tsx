@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { messageService } from '../../services/api.service';
+import { classService, messageService } from '../../services/api.service';
 import { User } from '../../types/api';
 import { Button } from '../UI/Button';
 import { Card } from '../UI/Card';
@@ -14,15 +14,23 @@ interface NewMessageModalProps {
 export const NewMessageModal: React.FC<NewMessageModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [classMembers, setClassMembers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingClass, setLoadingClass] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
+      fetchClasses();
+      setSelectedUser(null);
+      setSelectedClassId('');
+      setClassMembers([]);
     }
   }, [isOpen]);
 
@@ -45,14 +53,55 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({ isOpen, onClos
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!selectedUser || !message.trim()) {
-      toast.error('Veuillez sélectionner un utilisateur et écrire un message');
-      return;
+  const fetchClasses = async () => {
+    try {
+      const data = await classService.getMyClasses();
+      setClasses(data || []);
+    } catch (err) {
+      console.error('Error fetching classes', err);
     }
+  };
 
+  const fetchClassMembers = async (classId: string) => {
+    if (!classId) return;
+    try {
+      setLoadingClass(true);
+      const members = await classService.getClassMembers(classId);
+      setClassMembers(members || []);
+    } catch (err) {
+      console.error('Error fetching class members', err);
+      toast.error('Impossible de charger les membres de la classe');
+    } finally {
+      setLoadingClass(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
     try {
       setSending(true);
+
+      if (selectedClassId && !selectedUser) {
+        const ids = (classMembers || []).map((m) => parseInt(m.id));
+        if (ids.length === 0) {
+          toast.error('Aucun membre dans cette classe');
+          return;
+        }
+        const conversation = await messageService.createConversation(ids);
+        await messageService.sendMessage(conversation.id, message.trim());
+        toast.success('Message envoyé au groupe classe');
+        navigate(`/messages/${conversation.id}`);
+        onClose();
+        setMessage('');
+        setSearchTerm('');
+        setSelectedClassId('');
+        setClassMembers([]);
+        return;
+      }
+
+      if (!selectedUser || !message.trim()) {
+        toast.error('Veuillez sélectionner un utilisateur ou une classe et écrire un message');
+        return;
+      }
 
       // Create or get conversation with this user
       const conversation = await messageService.createConversation([parseInt(selectedUser.id)]);
@@ -70,6 +119,8 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({ isOpen, onClos
       setSelectedUser(null);
       setMessage('');
       setSearchTerm('');
+      setSelectedClassId('');
+      setClassMembers([]);
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Erreur lors de l\'envoi du message');
@@ -78,7 +129,7 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({ isOpen, onClos
     }
   };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = (selectedClassId ? classMembers : users).filter(user => {
     const searchLower = searchTerm.toLowerCase();
     const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
     const email = user.email.toLowerCase();
@@ -129,9 +180,37 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({ isOpen, onClos
             <>
               {/* Search Bar */}
               <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <select
+                    value={selectedClassId}
+                    onChange={(e) => {
+                      setSelectedClassId(e.target.value);
+                      setSelectedUser(null);
+                      setSearchTerm('');
+                      if (e.target.value) {
+                        fetchClassMembers(e.target.value);
+                      } else {
+                        setClassMembers([]);
+                      }
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  >
+                    <option value="">Destinataire direct</option>
+                    {classes.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        Classe : {cls.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedClassId && (
+                    <span className="text-xs text-gray-600">
+                      {loadingClass ? 'Chargement...' : `${classMembers.length} membre(s)`}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
-                  placeholder="Rechercher un utilisateur..."
+                  placeholder={selectedClassId ? 'Rechercher un membre de la classe...' : 'Rechercher un utilisateur...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

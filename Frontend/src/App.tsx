@@ -15,11 +15,12 @@ import { Dashboard } from './pages/Dashboard';
 import { Requirements } from './pages/Requirements';
 import { RequirementDetail } from './pages/RequirementDetail';
 import { Profile } from './pages/Profile';
-import { Class } from './pages/Class';
+import ClassPage from './pages/Class';
 import { Files } from './pages/Files';
 import { Calendar } from './pages/Calendar';
 import { Messages } from './pages/Messages';
 import { MessageThread } from './pages/MessageThread';
+import Directory from './pages/Directory';
 
 // Admin Pages
 import { AdminRequirements } from './pages/admin/AdminRequirements';
@@ -27,6 +28,9 @@ import { AdminCalendar } from './pages/admin/AdminCalendar';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminClasses } from './pages/admin/AdminClasses';
 import { AdminAssignments } from './pages/admin/AdminAssignments';
+import AdminClassDetail from './pages/admin/AdminClassDetail';
+import AdminReports from './pages/admin/AdminReports';
+import AdminLogs from './pages/admin/AdminLogs';
 
 // Create query client
 const queryClient = new QueryClient({
@@ -99,7 +103,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <Class />
+                    <ClassPage />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -150,12 +154,22 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/directory"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Directory />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Admin Routes */}
             <Route
               path="/admin/classes"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'RESP_PLATEFORME', 'TUTEUR_ECOLE']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE']}>
                   <Layout>
                     <AdminClasses />
                   </Layout>
@@ -163,9 +177,19 @@ function App() {
               }
             />
             <Route
+              path="/admin/classes/:id"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE']}>
+                  <Layout>
+                    <AdminClassDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/assignments"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'RESP_PLATEFORME']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE']}>
                   <Layout>
                     <AdminAssignments />
                   </Layout>
@@ -175,7 +199,7 @@ function App() {
             <Route
               path="/admin/requirements"
               element={
-                <ProtectedRoute allowedRoles={['RESP_PLATEFORME', 'TUTEUR', 'MAITRE_APP']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE', 'MAITRE_APP']}>
                   <Layout>
                     <AdminRequirements />
                   </Layout>
@@ -185,7 +209,7 @@ function App() {
             <Route
               path="/admin/calendar"
               element={
-                <ProtectedRoute allowedRoles={['RESP_PLATEFORME', 'TUTEUR', 'MAITRE_APP']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'TUTEUR_ECOLE', 'MAITRE_APP']}>
                   <Layout>
                     <AdminCalendar />
                   </Layout>
@@ -195,9 +219,29 @@ function App() {
             <Route
               path="/admin/users"
               element={
-                <ProtectedRoute allowedRoles={['RESP_PLATEFORME']}>
+                <ProtectedRoute allowedRoles={['ADMIN']}>
                   <Layout>
                     <AdminUsers />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reports"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <Layout>
+                    <AdminReports />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/logs"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <Layout>
+                    <AdminLogs />
                   </Layout>
                 </ProtectedRoute>
               }

@@ -6,6 +6,10 @@
   html {
     font-family: 'Inter', system-ui, sans-serif;
   }
+
+  html.dark body {
+    @apply bg-gray-900 text-gray-100;
+  }
 }
 
 @layer components {
@@ -66,6 +70,7 @@ input[type="file"],
 select,
 textarea {
   @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm;
+  @apply dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400;
 }
 
 input[type="file"] {

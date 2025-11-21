@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { User, UpdateUserRequest } from '../types/api';
+import { User, UpdateUserRequest, RegisterRequest } from '../types/api';
 import { userService, classService } from '../services/api.service';
 import toast from 'react-hot-toast';
 
@@ -48,6 +48,7 @@ export const useUpdateUser = (userId: string) => {
     mutationFn: (updates: UpdateUserRequest) => userService.updateUser(userId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', userId] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       toast.success('Profil mis à jour !');
     },
@@ -81,5 +82,38 @@ export const useDeleteUser = () => {
   return {
     deleteUser: deleteMutation.mutate,
     isDeleting: deleteMutation.isPending,
+  };
+};
+
+export const useCreateUser = () => {
+  const queryClient = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: (payload: RegisterRequest) => userService.createUser(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Utilisateur crAcAc !');
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || 'Erreur lors de la crAcation';
+      toast.error(message);
+    },
+  });
+
+  return {
+    createUser: createMutation.mutate,
+    isCreating: createMutation.isPending,
+  };
+};
+
+export const useClassesList = () => {
+  const { data: classes, isLoading } = useQuery({
+    queryKey: ['classes', 'all'],
+    queryFn: classService.getMyClasses,
+  });
+
+  return {
+    classes,
+    isLoading,
   };
 };

@@ -21,10 +21,10 @@ const navigation = [
   { name: 'Mes Fichiers', href: '/files', icon: FolderIcon },
   { name: 'Calendrier', href: '/calendar', icon: CalendarIcon },
   { name: 'Messages', href: '/messages', icon: ChatBubbleLeftRightIcon },
+  { name: 'Annuaire', href: '/directory', icon: UserGroupIcon },
 ];
 
 const adminNavigation = [
-  { name: 'Gestion Exigences', href: '/admin/requirements', icon: DocumentTextIcon },
   { name: 'Gestion Calendrier', href: '/admin/calendar', icon: CalendarIcon },
   { name: 'Gestion Utilisateurs', href: '/admin/users', icon: UserIcon },
 ];
@@ -33,7 +33,9 @@ export const Sidebar: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
 
-  const isAdmin = user?.role === 'RESP_PLATEFORME';
+  const isAdmin = user?.role === 'ADMIN';
+  const isMaitre = user?.role === 'MAITRE_APP';
+  const isStudent = user?.role === 'ALTERNANT' || user?.role === 'ETUDIANT_CLASSIQUE';
 
   return (
     <div className="flex h-full w-64 flex-col bg-gray-900">
@@ -44,25 +46,38 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <nav className="flex-1 space-y-1 px-2 py-4">
-        {navigation.map((item) => {
-          const isActive = location.pathname === item.href || 
-            (item.href === '/class' && location.pathname.startsWith('/class/'));
-          
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`${
-                isActive
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-              } group flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors`}
-            >
-              <item.icon className="mr-3 h-5 w-5" />
-              {item.name}
-            </Link>
-          );
-        })}
+        {navigation
+          .filter((item) => {
+            // Admin/maître n'ont pas de classe : cacher "Ma Classe"
+            if ((isAdmin || isMaitre) && item.name === 'Ma Classe') return false;
+            // Admin ne voit pas exigence/fichiers côté user
+            if (isAdmin && (item.name === 'Exigences' || item.name === 'Mes Fichiers')) return false;
+            // Maître n'a pas besoin d'exigences/fichiers ici
+            if (isMaitre && (item.name === 'Exigences' || item.name === 'Mes Fichiers')) return false;
+            // Autres rôles : si pas étudiant/alternant, cacher Ma Classe
+            if (!isStudent && item.name === 'Ma Classe') return false;
+            return true;
+          })
+          .map((item) => {
+            const isActive =
+              location.pathname === item.href ||
+              (item.href === '/class' && location.pathname.startsWith('/class/'));
+
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`${
+                  isActive
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                } group flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors`}
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+              </Link>
+            );
+          })}
 
         {isAdmin && (
           <>

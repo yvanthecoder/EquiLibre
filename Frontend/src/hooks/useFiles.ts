@@ -32,10 +32,13 @@ export const useUploadFile = () => {
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
-    mutationFn: ({ file, classId }: { file: File; classId?: string }) =>
-      fileService.uploadFile(file, classId),
+    mutationFn: ({ file, classId, visibilityRole, requiresSignature, parentFileId, version }: { file: File; classId?: string; visibilityRole?: string; requiresSignature?: boolean; parentFileId?: string; version?: number }) =>
+      fileService.uploadFile(file, classId, { visibilityRole, requiresSignature, parentFileId, version }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['files', 'personal'] });
+      queryClient.invalidateQueries({ queryKey: ['files', 'class'] });
+      queryClient.invalidateQueries({ queryKey: ['files', 'shared'] });
       toast.success('Fichier téléchargé avec succès !');
     },
     onError: (error: any) => {
@@ -57,6 +60,9 @@ export const useDeleteFile = () => {
     mutationFn: (fileId: string) => fileService.deleteFile(fileId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['files', 'personal'] });
+      queryClient.invalidateQueries({ queryKey: ['files', 'class'] });
+      queryClient.invalidateQueries({ queryKey: ['files', 'shared'] });
       toast.success('Fichier supprimé !');
     },
     onError: (error: any) => {

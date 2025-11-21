@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../UI/Card';
 import { Button } from '../UI/Button';
-import { assignmentService } from '../../services/api.service';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+import { assignmentService, classService } from '../../services/api.service';
+import { Modal } from '../UI/Modal';
+import { messageService, userService } from '../../services/api.service';
+import { useAuth } from '../../hooks/useAuth';
+import toast from 'react-hot-toast';
 
 interface Stats {
   total_assignments: number;
@@ -20,9 +21,16 @@ interface Stats {
 }
 
 export const AdminDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [broadcastText, setBroadcastText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [selectedAudiences, setSelectedAudiences] = useState<string[]>(['ALL']);
+  const [broadcastClassId, setBroadcastClassId] = useState<string>('');
+  const [targetEmail, setTargetEmail] = useState<string>('');
 
   useEffect(() => {
     fetchStats();
@@ -31,17 +39,15 @@ export const AdminDashboard: React.FC = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-
       const [assignmentStats, classesResponse, unassignedStudents] = await Promise.all([
         assignmentService.getAssignmentStats(),
-        axios.get(`${API_URL}/api/classes`, { headers: { Authorization: `Bearer ${token}` } }),
+        classService.getMyClasses(),
         assignmentService.getUnassignedStudents()
       ]);
 
       setStats({
         ...assignmentStats,
-        total_classes: classesResponse.data.count || 0,
+        total_classes: Array.isArray(classesResponse) ? classesResponse.length : 0,
         unassigned_students: unassignedStudents.length
       });
     } catch (err) {
@@ -240,7 +246,7 @@ export const AdminDashboard: React.FC = () => {
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">📝</span>
+                <span className="text-2xl">🗂️</span>
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">Gérer les Exigences</h3>
@@ -277,6 +283,21 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </Card>
         </Link>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <span className="text-2xl">📢</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900">Diffusion message</h3>
+              <p className="text-sm text-gray-600">Envoyer à un groupe</p>
+            </div>
+            <Button size="sm" onClick={() => setShowBroadcast(true)}>
+              Ouvrir
+            </Button>
+          </div>
+        </Card>
       </div>
 
       {/* Additional Info */}
@@ -301,6 +322,212 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </Card>
+
+      <BroadcastModal
+        isOpen={showBroadcast}
+        onClose={() => setShowBroadcast(false)}
+        text={broadcastText}
+        setText={setBroadcastText}
+        sending={sending}
+        onSend={async (audiences, content) => {
+          if (!user) {
+            toast.error('Utilisateur non connecté');
+            return;
+          }
+          if (!content.trim()) {
+            toast.error('Message vide');
+            return;
+          }
+          try {
+            setSending(true);
+            const allUsers = await userService.getAllUsers();
+            // Si une classe est sélectionnée, envoyer au groupe classe
+            if (broadcastClassId) {
+              try {
+                const members = await classService.getClassMembers(broadcastClassId);
+                const memberIds = members.map((m: any) => Number(m.id));
+                const selfId = Number(user.id);
+                if (!memberIds.includes(selfId)) memberIds.push(selfId);
+                const conversation = await messageService.createConversation(memberIds);
+                await messageService.sendMessage(Number(conversation.id), content.trim());
+                toast.success('Message diffusé');
+                setBroadcastText('');
+                setShowBroadcast(false);
+                setBroadcastClassId('');
+                setTargetEmail('');
+                return;
+              } catch (err: any) {
+                const message = err.response?.data?.message || 'Erreur diffusion classe';
+                toast.error(message);
+                return;
+              } finally {
+                setSending(false);
+              }
+            }
+            const wantedRoles: Record<string, string[]> = {
+              STUDENTS: ['ALTERNANT', 'ETUDIANT_CLASSIQUE'],
+              TUTORS: ['TUTEUR_ECOLE'],
+              TEACHERS: ['MAITRE_APP'],
+              ADMINS: ['ADMIN'],
+              ALL: ['ALTERNANT', 'ETUDIANT_CLASSIQUE', 'TUTEUR_ECOLE', 'MAITRE_APP', 'ADMIN'],
+            };
+
+            const audienceRoles = audiences.includes('ALL')
+              ? wantedRoles.ALL
+              : audiences.flatMap((a) => wantedRoles[a] || []);
+
+            const participantIds = allUsers
+              .filter((u: any) => audienceRoles.includes(u.role))
+              .map((u: any) => Number(u.id));
+
+            if (targetEmail) {
+              const target = allUsers.find((u: any) => u.email === targetEmail);
+              if (target) participantIds.push(Number(target.id));
+            }
+
+            const selfId = Number(user.id);
+            if (!participantIds.includes(selfId)) participantIds.push(selfId);
+
+            if (participantIds.length === 0) {
+              toast.error('Aucun destinataire');
+              return;
+            }
+
+            const conversation = await messageService.createConversation(participantIds);
+            await messageService.sendMessage(Number(conversation.id), content.trim());
+            toast.success('Message diffusé');
+            setBroadcastText('');
+            setShowBroadcast(false);
+            setBroadcastClassId('');
+            setTargetEmail('');
+          } catch (err: any) {
+            const message = err.response?.data?.message || 'Erreur lors de l’envoi';
+            toast.error(message);
+          } finally {
+            setSending(false);
+          }
+        }}
+        selectedAudiences={selectedAudiences}
+        setSelectedAudiences={setSelectedAudiences}
+        broadcastClassId={broadcastClassId}
+        setBroadcastClassId={setBroadcastClassId}
+        targetEmail={targetEmail}
+        setTargetEmail={setTargetEmail}
+      />
     </div>
+  );
+};
+
+type BroadcastModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  text: string;
+  setText: (val: string) => void;
+  sending: boolean;
+  onSend: (audiences: string[], content: string) => void;
+  selectedAudiences: string[];
+  setSelectedAudiences: (val: string[]) => void;
+  broadcastClassId: string;
+  setBroadcastClassId: (val: string) => void;
+  targetEmail: string;
+  setTargetEmail: (val: string) => void;
+};
+
+const BroadcastModal: React.FC<BroadcastModalProps> = ({
+  isOpen,
+  onClose,
+  text,
+  setText,
+  sending,
+  onSend,
+  selectedAudiences,
+  setSelectedAudiences,
+  broadcastClassId,
+  setBroadcastClassId,
+  targetEmail,
+  setTargetEmail,
+}) => {
+  const toggleAudience = (id: string) => {
+    if (id === 'ALL') {
+      setSelectedAudiences(['ALL']);
+      return;
+    }
+    const next = selectedAudiences.includes('ALL')
+      ? [id]
+      : selectedAudiences.includes(id)
+      ? selectedAudiences.filter((a) => a !== id)
+      : [...selectedAudiences, id];
+    setSelectedAudiences(next);
+  };
+
+  const audiences = [
+    { id: 'ALL', label: 'Tout le monde' },
+    { id: 'STUDENTS', label: 'Tous les élèves' },
+    { id: 'TUTORS', label: 'Tous les tuteurs' },
+    { id: 'TEACHERS', label: 'Tous les enseignants' },
+    { id: 'ADMINS', label: 'Tous les admins' },
+  ];
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Envoyer un message groupé" size="md">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">Audience</p>
+          <div className="grid grid-cols-2 gap-2">
+            {audiences.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => toggleAudience(a.id)}
+                className={`px-3 py-2 text-sm rounded border ${
+                  selectedAudiences.includes(a.id)
+                    ? 'bg-blue-100 border-blue-300 text-blue-800'
+                    : 'border-gray-200 text-gray-700'
+                }`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">Classe (optionnel)</p>
+          <input
+            type="text"
+            value={broadcastClassId}
+            onChange={(e) => setBroadcastClassId(e.target.value)}
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="ID de classe pour cibler les membres"
+          />
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">Destinataire direct (email, optionnel)</p>
+          <input
+            type="email"
+            value={targetEmail}
+            onChange={(e) => setTargetEmail(e.target.value)}
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="email@exemple.com"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+          <textarea
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            rows={4}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Votre annonce..."
+          />
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose} disabled={sending}>
+            Annuler
+          </Button>
+          <Button onClick={() => onSend(selectedAudiences, text)} isLoading={sending}>
+            Envoyer
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 };

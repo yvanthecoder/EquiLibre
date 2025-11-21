@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+const { pool } = require('../config/database');
 
 class Message {
   /**
@@ -203,6 +203,12 @@ class Message {
       const senderInfo = await pool.query(
         'SELECT firstname, lastname, email, profile_picture, role FROM users WHERE id = $1',
         [senderId]
+      );
+
+      // Mettre A� jour la conversation
+      await pool.query(
+        'UPDATE conversations SET last_message_at = NOW(), updated_at = NOW() WHERE id = $1',
+        [conversationId]
       );
 
       return {

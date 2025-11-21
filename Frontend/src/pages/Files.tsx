@@ -1,106 +1,234 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
-import { 
-  FolderIcon, 
-  DocumentIcon, 
-  CloudArrowUpIcon, 
-  EyeIcon, 
+import {
+  FolderIcon,
+  DocumentIcon,
+  CloudArrowUpIcon,
+  EyeIcon,
   ArrowDownTrayIcon,
-  TrashIcon 
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  usePersonalFiles,
+  useClassFiles,
+  useUploadFile,
+  useDeleteFile,
+} from '../hooks/useFiles';
+import { useAuth } from '../hooks/useAuth';
+import { classService, fileService } from '../services/api.service';
+import { Modal } from '../components/UI/Modal';
+import toast from 'react-hot-toast';
 
-// Mock files data
-const mockFiles = [
-  {
-    id: '1',
-    name: 'Projet React - Todo App.zip',
-    type: 'application/zip',
-    size: 2048576, // 2MB
-    uploadedAt: '2024-01-20T14:30:00Z',
-    category: 'projects',
-  },
-  {
-    id: '2',
-    name: 'Rapport Stage S1.pdf',
-    type: 'application/pdf',
-    size: 1536000, // 1.5MB
-    uploadedAt: '2024-01-18T10:15:00Z',
-    category: 'reports',
-  },
-  {
-    id: '3',
-    name: 'Présentation Finale.pptx',
-    type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    size: 5242880, // 5MB
-    uploadedAt: '2024-01-15T16:45:00Z',
-    category: 'presentations',
-  },
-  {
-    id: '4',
-    name: 'Code Review Notes.docx',
-    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    size: 512000, // 500KB
-    uploadedAt: '2024-01-12T09:30:00Z',
-    category: 'documents',
-  },
-];
+const formatFileSize = (bytes: number) => {
+  if (!bytes) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};
+
+const deriveCategory = (fileType: string, hasClass: boolean) => {
+  if (hasClass) return 'class';
+  if (fileType.includes('presentation')) return 'presentations';
+  if (fileType.includes('zip') || fileType.includes('archive')) return 'projects';
+  return 'documents';
+};
 
 export const Files: React.FC = () => {
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [files] = useState(mockFiles);
+  const [activeClassId, setActiveClassId] = useState<string | undefined>(user?.classId);
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string>('');
+  const [requiresSignature, setRequiresSignature] = useState<boolean>(false);
+  const [signatureList, setSignatureList] = useState<any[]>([]);
+  const [signatureFileName, setSignatureFileName] = useState<string>('');
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
-  const categories = [
-    { id: 'all', name: 'Tous les fichiers', count: files.length },
-    { id: 'projects', name: 'Projets', count: files.filter(f => f.category === 'projects').length },
-    { id: 'reports', name: 'Rapports', count: files.filter(f => f.category === 'reports').length },
-    { id: 'presentations', name: 'Présentations', count: files.filter(f => f.category === 'presentations').length },
-    { id: 'documents', name: 'Documents', count: files.filter(f => f.category === 'documents').length },
-  ];
+  const { files: personalFiles } = usePersonalFiles();
+  const { files: classFiles } = useClassFiles(activeClassId);
+  const { uploadFile, isUploading } = useUploadFile();
+  const { deleteFile, isDeleting } = useDeleteFile();
 
-  const filteredFiles = selectedCategory === 'all' 
-    ? files 
-    : files.filter(file => file.category === selectedCategory);
+  useEffect(() => {
+    const loadClasses = async () => {
+      try {
+        const cls = await classService.getMyClasses();
+        setClasses(cls);
+        if (!activeClassId && cls.length > 0) {
+          setActiveClassId(cls[0].id);
+        }
+      } catch (err) {
+        console.error('Impossible de charger les classes', err);
+      }
+    };
+    loadClasses();
+  }, [activeClassId]);
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const isStudent = user?.role === 'ALTERNANT' || user?.role === 'ETUDIANT_CLASSIQUE';
+
+  const filesWithCategory = useMemo(() => {
+    const combined = [
+      ...(personalFiles || []).map((f: any) => ({
+        ...f,
+        _category: deriveCategory(f.fileType || '', false),
+      })),
+      ...(isStudent ? classFiles || [] : []).map((f: any) => ({
+        ...f,
+        _category: 'class',
+      })),
+    ];
+    return combined;
+  }, [personalFiles, classFiles, isStudent]);
+
+  const categories = useMemo(() => {
+    const base = isStudent
+      ? [
+          { id: 'all', name: 'Tous les fichiers' },
+          { id: 'projects', name: 'Projets' },
+          { id: 'reports', name: 'Rapports' },
+          { id: 'presentations', name: 'Présentations' },
+          { id: 'documents', name: 'Documents' },
+          { id: 'class', name: 'Equipe tutorale' },
+        ]
+      : [
+          { id: 'all', name: 'Tous les fichiers' },
+          { id: 'projects', name: 'Projets' },
+          { id: 'reports', name: 'Rapports' },
+          { id: 'presentations', name: 'Présentations' },
+          { id: 'documents', name: 'Documents' },
+        ];
+    return base.map((c) => ({
+      ...c,
+      count: c.id === 'all' ? filesWithCategory.length : filesWithCategory.filter((f) => f._category === c.id).length,
+    }));
+  }, [filesWithCategory]);
+
+  const filteredFiles =
+    selectedCategory === 'all'
+      ? filesWithCategory
+      : filesWithCategory.filter((file) => file._category === selectedCategory);
+
+  const handleUploadClick = () => uploadInputRef.current?.click();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (selectedCategory === 'class' && !activeClassId) {
+      toast.error('Sélectionnez une classe avant de téléverser');
+      e.target.value = '';
+      return;
+    }
+    uploadFile(
+      {
+        file: file as any,
+        classId: selectedCategory === 'class' ? activeClassId : undefined,
+        requiresSignature: selectedCategory === 'class' ? requiresSignature : false,
+      } as any,
+      {
+        onSuccess: () => {
+          toast.success('Fichier téléversé');
+          e.target.value = '';
+        },
+        onError: () => {
+          e.target.value = '';
+        },
+      }
+    );
   };
 
-  const getFileIcon = (type: string) => {
-    if (type.includes('pdf')) return '📄';
-    if (type.includes('word') || type.includes('document')) return '📝';
-    if (type.includes('presentation')) return ' ';
-    if (type.includes('zip') || type.includes('archive')) return '📦';
-    return '📄';
+  const handleDelete = (fileId: string) => {
+    deleteFile(fileId, {
+      onSuccess: () => toast.success('Fichier supprimé'),
+    });
   };
+
+  const handlePreview = async (fileId: string, fileName: string) => {
+    try {
+      const blob = await fileService.downloadFile(fileId);
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setPreviewName(fileName);
+    } catch (err) {
+      toast.error('Prévisualisation impossible, téléchargement…');
+      handleDownload(fileId, fileName);
+    }
+  };
+
+  const handleShowSignatures = async (file: any) => {
+    try {
+      const list = await fileService.getSignatures(file.id.toString());
+      setSignatureList(list || []);
+      setSignatureFileName(file.fileName || file.name);
+      setShowSignatureModal(true);
+    } catch (err) {
+      toast.error('Impossible de charger les signatures');
+    }
+  };
+
+  const handleDownload = (fileId: string, fileName: string) => {
+    fileService
+      .downloadFile(fileId)
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(() => toast.error('Erreur lors du téléchargement'));
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mes Fichiers</h1>
-          <p className="text-gray-600">
-            Gérez vos documents et fichiers personnels
-          </p>
+          <p className="text-gray-600">Gérez vos documents et fichiers personnels</p>
         </div>
-        <Button>
-          <CloudArrowUpIcon className="h-4 w-4 mr-2" />
-          Télécharger un fichier
-        </Button>
+        <div className="flex items-center gap-3">
+          {selectedCategory === 'class' && classes.length > 1 && (
+            <select
+              value={activeClassId}
+              onChange={(e) => setActiveClassId(e.target.value)}
+              className="text-sm border-gray-300 rounded-md"
+            >
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <Button onClick={handleUploadClick} isLoading={isUploading}>
+            <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+            Télécharger un fichier
+          </Button>
+          <input type="file" ref={uploadInputRef} className="hidden" onChange={handleFileChange} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Categories Sidebar */}
         <Card>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Catégories</h2>
           <nav className="space-y-2">
-            {categories.map(category => (
+            {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
@@ -132,50 +260,102 @@ export const Files: React.FC = () => {
           </div>
         </Card>
 
-        {/* Files List */}
         <div className="lg:col-span-3">
           <Card>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900">
-                {categories.find(c => c.id === selectedCategory)?.name}
+                {categories.find((c) => c.id === selectedCategory)?.name}
               </h2>
-              <div className="flex items-center space-x-2">
-                <select className="text-sm border-gray-300 rounded-md">
-                  <option>Trier par date</option>
-                  <option>Trier par nom</option>
-                  <option>Trier par taille</option>
-                </select>
-              </div>
             </div>
 
             {filteredFiles.length > 0 ? (
               <div className="space-y-3">
-                {filteredFiles.map(file => (
-                  <div key={file.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                {filteredFiles.map((file: any) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     <div className="flex items-center space-x-4">
-                      <div className="text-2xl">
-                        {getFileIcon(file.type)}
-                      </div>
+                      <div className="text-2xl">📄</div>
                       <div>
-                        <h3 className="font-medium text-gray-900">{file.name}</h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>{formatFileSize(file.size)}</span>
-                          <span>•</span>
-                          <span>
-                            Ajouté le {format(new Date(file.uploadedAt), 'dd/MM/yyyy', { locale: fr })}
-                          </span>
-                        </div>
-                      </div>
+                        <h3 className="font-medium text-gray-900">{file.fileName || file.name}</h3>
+                    <div className="flex items-center space-x-3 text-sm text-gray-500 flex-wrap">
+                      <span>{formatFileSize(file.fileSize || file.file_size || 0)}</span>
+                      <span>v{file.version || 1}</span>
+                      {file.visibilityRole && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                          Partage rôle
+                        </span>
+                      )}
+                      {file.requiresSignature && (
+                        <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
+                          Signature requise
+                        </span>
+                      )}
+                      <span>
+                        Ajouté le{' '}
+                        {file.uploadedAt
+                          ? format(new Date(file.uploadedAt), 'dd/MM/yyyy', { locale: fr })
+                          : 'N/A'}
+                      </span>
                     </div>
+                  </div>
+                </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
-                        <EyeIcon className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
+                <div className="flex items-center space-x-2">
+                  {file.requiresSignature && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        fileService
+                          .signFile(file.id.toString())
+                          .then(() => {
+                            toast.success('Signé');
+                          })
+                          .catch(() => toast.error('Erreur signature'))
+                      }
+                    >
+                      Signer
+                    </Button>
+                  )}
+                  {file.requiresSignature && (
+                    <Button variant="outline" size="sm" onClick={() => handleShowSignatures(file)}>
+                      Signatures
+                    </Button>
+                  )}
+                  {file.visibilityRole && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        uploadFile(
+                          {
+                            file: file as any,
+                            classId: selectedCategory === 'class' ? activeClassId : undefined,
+                            requiresSignature: file.requiresSignature,
+                            parentFileId: file.id,
+                            version: (file.version || 1) + 1,
+                          } as any,
+                          { onSuccess: () => toast.success('Nouvelle version envoyée') }
+                        )
+                      }
+                    >
+                      Nouvelle version
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => handlePreview(file.id.toString(), file.fileName || file.name)}>
+                    <EyeIcon className="h-4 w-4" />
+                  </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDownload(file.id.toString(), file.fileName || file.name)}>
                         <ArrowDownTrayIcon className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(file.id.toString())}
+                        disabled={isDeleting}
+                      >
                         <TrashIcon className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
@@ -185,13 +365,11 @@ export const Files: React.FC = () => {
             ) : (
               <div className="text-center py-12">
                 <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Aucun fichier
-                </h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun fichier</h3>
                 <p className="text-gray-600 mb-4">
                   Vous n'avez pas encore téléchargé de fichiers dans cette catégorie.
                 </p>
-                <Button>
+                <Button onClick={handleUploadClick}>
                   <CloudArrowUpIcon className="h-4 w-4 mr-2" />
                   Télécharger votre premier fichier
                 </Button>
@@ -200,6 +378,54 @@ export const Files: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      <Modal
+        isOpen={!!previewUrl}
+        onClose={() => {
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          setPreviewUrl(null);
+        }}
+        title={previewName || 'Aperçu du fichier'}
+        size="xl"
+      >
+        {previewUrl ? (
+          <iframe src={previewUrl} className="w-full h-[70vh]" title="Aperçu" />
+        ) : (
+          <p className="text-gray-600">Chargement de l'aperçu...</p>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={showSignatureModal}
+        onClose={() => {
+          setShowSignatureModal(false);
+          setSignatureList([]);
+          setSignatureFileName('');
+        }}
+        title={`Signatures - ${signatureFileName}`}
+        size="md"
+      >
+        <div className="space-y-2 max-h-80 overflow-y-auto text-sm">
+          {signatureList.map((sig: any) => (
+            <div key={sig.id} className="flex justify-between border-b border-gray-100 pb-1">
+              <div>
+                <p className="text-gray-900">
+                  {sig.firstname ? `${sig.firstname} ${sig.lastname}` : `Utilisateur #${sig.userId}`}
+                </p>
+                <p className="text-xs text-gray-500">{sig.email || ''}</p>
+              </div>
+              <span className="text-xs text-gray-500">
+                {sig.signedAt
+                  ? format(new Date(sig.signedAt), 'dd/MM HH:mm', { locale: fr })
+                  : ''}
+              </span>
+            </div>
+          ))}
+          {signatureList.length === 0 && (
+            <p className="text-sm text-gray-500 text-center py-4">Aucune signature pour ce fichier</p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -12,7 +12,7 @@ const getNotifications = async (req, res) => {
                 title,
                 message,
                 type,
-                is_read as "isRead",
+                is_read as "read",
                 link,
                 metadata,
                 created_at as "createdAt"
@@ -135,6 +135,7 @@ const deleteNotification = async (req, res) => {
 const createNotification = async (req, res) => {
     try {
         const { userId, title, message, type, link, metadata } = req.body;
+        const normalizedType = (type || 'INFO').toUpperCase();
 
         if (!userId || !title || !message) {
             return res.status(400).json({
@@ -146,8 +147,8 @@ const createNotification = async (req, res) => {
         const result = await pool.query(
             `INSERT INTO notifications (user_id, title, message, type, link, metadata)
             VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, title, message, type, is_read as "isRead", created_at as "createdAt"`,
-            [userId, title, message, type || 'info', link, metadata]
+            RETURNING id, title, message, type, is_read as "read", created_at as "createdAt"`,
+            [userId, title, message, normalizedType, link, metadata]
         );
 
         res.status(201).json({

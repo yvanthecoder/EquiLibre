@@ -14,8 +14,10 @@ const USER_ROLES = {
 // Statuts des requirements
 const REQUIREMENT_STATUS = {
     PENDING: 'PENDING',
-    APPROVED: 'APPROVED',
-    REJECTED: 'REJECTED'
+    SUBMITTED: 'SUBMITTED',
+    VALIDATED: 'VALIDATED',
+    REJECTED: 'REJECTED',
+    LOCKED: 'LOCKED'
 };
 
 // Types de notifications
@@ -51,9 +53,9 @@ const ROLE_PERMISSIONS = {
         canViewAllData: true
     },
     TUTEUR_ECOLE: {
-        canCreateRequirements: false,
-        canEditRequirements: false,
-        canDeleteRequirements: false,
+        canCreateRequirements: true,
+        canEditRequirements: true,
+        canDeleteRequirements: true,
         canValidateRequirements: true,
         canManageUsers: false,
         canManageClasses: true,
@@ -63,7 +65,7 @@ const ROLE_PERMISSIONS = {
         canCreateRequirements: false,
         canEditRequirements: false,
         canDeleteRequirements: false,
-        canValidateRequirements: false,
+        canValidateRequirements: true,
         canManageUsers: false,
         canManageClasses: false,
         canViewStudentData: true

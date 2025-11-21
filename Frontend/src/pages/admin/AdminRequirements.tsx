@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRequirements, useCreateRequirement, useUpdateRequirement } from '../../hooks/useRequirements';
 import { Card } from '../../components/UI/Card';
@@ -11,30 +11,83 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { CreateRequirementRequest } from '../../types/api';
+import { useClassesList } from '../../hooks/useUsers';
+
+const toLocalInput = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+
+const toEndOfDayISO = (value: string) => {
+  if (!value) return value;
+  const date = new Date(value);
+  date.setHours(23, 59, 59, 0);
+  return date.toISOString();
+};
 
 export const AdminRequirements: React.FC = () => {
   const { user } = useAuth();
-  const { requirements, isLoading } = useRequirements(user?.classId);
+  const { classes } = useClassesList();
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const { requirements, isLoading } = useRequirements(selectedClassId);
   const { createRequirement, isCreating } = useCreateRequirement();
   const [selectedReq, setSelectedReq] = useState<string | null>(null);
-  const { updateRequirement, deleteRequirement } = useUpdateRequirement(selectedReq || '');
+  const { updateRequirement, deleteRequirement, isDeleting, isUpdating } = useUpdateRequirement(selectedReq || '');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateRequirementRequest>();
 
+  useEffect(() => {
+    if (!selectedClassId && classes?.length) {
+      setSelectedClassId(classes[0].id);
+    } else if (!selectedClassId && user?.classId) {
+      setSelectedClassId(user.classId);
+    }
+  }, [classes, selectedClassId, user?.classId]);
+
+  const classOptions = useMemo(() => classes || [], [classes]);
+
   const onSubmit = (data: CreateRequirementRequest) => {
-    createRequirement({
+    const payload = {
       ...data,
-      classId: user?.classId || '',
-    });
-    setShowCreateModal(false);
-    reset();
+      classId: selectedClassId || user?.classId || '',
+      dueDate: toEndOfDayISO(data.dueDate),
+    };
+
+    if (selectedReq) {
+      updateRequirement(payload, {
+        onSuccess: () => {
+          setShowCreateModal(false);
+          setSelectedReq(null);
+          reset();
+        },
+      });
+    } else {
+      createRequirement(payload);
+      setShowCreateModal(false);
+      reset();
+    }
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette exigence ?')) {
       setSelectedReq(id);
       deleteRequirement();
+    }
+  };
+
+  const handleEdit = (req: any) => {
+    setSelectedReq(req.id);
+    setShowCreateModal(true);
+    reset({
+      title: req.title,
+      description: req.description,
+      dueDate: toLocalInput(req.dueDate),
+      classId: req.classId,
+    });
+    if (req.classId) {
+      setSelectedClassId(req.classId);
     }
   };
 
@@ -64,9 +117,7 @@ export const AdminRequirements: React.FC = () => {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              // Navigate to edit page or show edit modal
-            }}
+            onClick={() => handleEdit(row)}
           >
             <PencilIcon className="h-4 w-4" />
           </Button>
@@ -74,6 +125,7 @@ export const AdminRequirements: React.FC = () => {
             size="sm"
             variant="danger"
             onClick={() => handleDelete(row.id)}
+            disabled={isDeleting}
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
@@ -85,15 +137,29 @@ export const AdminRequirements: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des exigences</h1>
-        <Button onClick={() => setShowCreateModal(true)}>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => window.history.back()}>← Retour</Button>
+          <h1 className="text-2xl font-bold text-gray-900">Gestion des exigences</h1>
+          <select
+            value={selectedClassId}
+            onChange={(e) => setSelectedClassId(e.target.value)}
+            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            {classOptions.map((cls: any) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button onClick={() => { setSelectedReq(null); setShowCreateModal(true); }}>
           <PlusIcon className="h-5 w-5 mr-2" />
           Nouvelle exigence
         </Button>
       </div>
 
       <Card>
-        {isLoading ? (
+        {isLoading || !selectedClassId ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
@@ -106,14 +172,15 @@ export const AdminRequirements: React.FC = () => {
         )}
       </Card>
 
-      {/* Create Modal */}
+      {/* Create/Edit Modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => {
           setShowCreateModal(false);
           reset();
+          setSelectedReq(null);
         }}
-        title="Créer une exigence"
+        title={selectedReq ? 'Modifier une exigence' : 'Créer une exigence'}
         size="lg"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -145,18 +212,36 @@ export const AdminRequirements: React.FC = () => {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date limite *
-            </label>
-            <input
-              {...register('dueDate', { required: 'Date requise' })}
-              type="datetime-local"
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-            {errors.dueDate && (
-              <p className="mt-1 text-sm text-red-600">{errors.dueDate.message}</p>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date limite *
+              </label>
+              <input
+                {...register('dueDate', { required: 'Date requise' })}
+                type="datetime-local"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+              {errors.dueDate && (
+                <p className="mt-1 text-sm text-red-600">{errors.dueDate.message}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Classe
+              </label>
+              <select
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                {classOptions.map((cls: any) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2">
@@ -166,12 +251,13 @@ export const AdminRequirements: React.FC = () => {
               onClick={() => {
                 setShowCreateModal(false);
                 reset();
+                setSelectedReq(null);
               }}
             >
               Annuler
             </Button>
-            <Button type="submit" isLoading={isCreating}>
-              Créer
+            <Button type="submit" isLoading={isCreating || isUpdating}>
+              {selectedReq ? 'Mettre à jour' : 'Créer'}
             </Button>
           </div>
         </form>
