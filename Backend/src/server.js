@@ -21,8 +21,24 @@ const app = express();
 // =============================================
 
 // CORS - Autoriser les requêtes depuis le frontend
+// Accepter plusieurs ports pour le développement local
+const allowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:5174',
+    'http://localhost:5174', // Port alternatif si 5174 est occupé
+    'http://localhost:3000'  // Port alternatif React
+];
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: function(origin, callback) {
+        // Autoriser les requêtes sans origin (comme curl, Postman)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 

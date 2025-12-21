@@ -39,7 +39,7 @@ cp .env.example .env
 Éditer le fichier `.env` :
 
 ```env
-PORT=5000
+PORT=5001
 NODE_ENV=development
 
 DB_HOST=localhost
@@ -101,7 +101,7 @@ npm run dev
 npm start
 ```
 
-Le serveur démarre sur `http://localhost:5000`
+Le serveur démarre sur `http://localhost:5001`
 
 ## 🔐 Les 5 Rôles Utilisateurs
 
@@ -190,7 +190,7 @@ Authorization: Bearer <votre_token_jwt>
 ### Exemple de requête
 
 ```javascript
-const response = await fetch('http://localhost:5000/api/auth/me', {
+const response = await fetch('http://localhost:5001/api/auth/me', {
   headers: {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
@@ -278,7 +278,7 @@ NODE_ENV=development
 Health check endpoint disponible :
 
 ```bash
-curl http://localhost:5000/health
+curl http://localhost:5001/health
 ```
 
 ## 🤝 Contribution
