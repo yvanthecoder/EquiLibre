@@ -109,7 +109,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/Users/yvandjopa/Documents/Projet SIGL/EquiLibre/Frontend/src/generated/prisma",
+      "value": "/Users/yvandjopa/Documents/Equilibre/EquiLibre/Frontend/src/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -123,11 +123,12 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/Users/yvandjopa/Documents/Projet SIGL/EquiLibre/Frontend/prisma/schema.prisma",
+    "sourceFilePath": "/Users/yvandjopa/Documents/Equilibre/EquiLibre/Frontend/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null
+    "rootEnvPath": null,
+    "schemaEnvPath": "../../../.env"
   },
   "relativePath": "../../../prisma",
   "clientVersion": "6.19.0",

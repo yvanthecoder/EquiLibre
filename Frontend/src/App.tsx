@@ -21,6 +21,7 @@ import { Calendar } from './pages/Calendar';
 import { Messages } from './pages/Messages';
 import { MessageThread } from './pages/MessageThread';
 import Directory from './pages/Directory';
+import { Assistant } from './pages/Assistant';
 
 // Admin Pages
 import { AdminRequirements } from './pages/admin/AdminRequirements';
@@ -160,6 +161,18 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Directory />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Assistant */}
+            <Route
+              path="/assistant"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Assistant />
                   </Layout>
                 </ProtectedRoute>
               }

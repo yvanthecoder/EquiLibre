@@ -33,7 +33,9 @@ export const useAuth = () => {
       navigate('/dashboard');
     },
     onError: (error: any) => {
-      const message = error.response?.data?.message || 'Identifiants incorrects';
+      console.error('Login error:', error);
+      console.error('Error response:', error.response?.data);
+      const message = error.response?.data?.message || error.response?.data?.detail || error.message || 'Identifiants incorrects';
       toast.error(message);
     },
   });

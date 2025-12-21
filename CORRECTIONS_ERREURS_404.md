@@ -150,7 +150,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:5001/api/notifications
 
 ### Test 2: Profile.tsx
 
-1. Ouvrir http://localhost:5173/profile
+1. Ouvrir http://localhost:5174/profile
 2. **Résultat attendu:** La page s'affiche sans erreur
 3. Si `createdAt` est disponible: affiche la date formatée
 4. Sinon: affiche "Date non disponible"

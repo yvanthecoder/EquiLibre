@@ -27,7 +27,9 @@ export const authService = {
     const response = await api.post('/auth/login', credentials);
     // Transform backend response: { success, data: { token, user } }
     // to frontend format: { user, tokens: { access_token, refresh_token } }
-    const { token, user: backendUser } = response.data.data;
+    // Backend sends: { success: true, data: { token, user } }
+    const responseData = response.data.data || response.data;
+    const { token, user: backendUser } = responseData;
     return {
       user: {
         id: backendUser.id.toString(),
@@ -70,7 +72,8 @@ export const authService = {
     const response = await api.post('/auth/register', backendData);
     // Transform backend response: { success, data: { token, user } }
     // to frontend format: { user, tokens: { access_token, refresh_token } }
-    const { token, user: backendUser } = response.data.data;
+    const responseData = response.data.data || response.data;
+    const { token, user: backendUser } = responseData;
     return {
       user: {
         id: backendUser.id.toString(),
@@ -565,8 +568,8 @@ export const messageService = {
   },
 
   createThread: async (threadData: CreateThreadRequest): Promise<Thread> => {
-    // Extract participant IDs from threadData
-    const participantIds = threadData.participants || [];
+    // Extract participant IDs from threadData and convert to numbers
+    const participantIds = (threadData.participantIds || []).map(id => parseInt(id, 10));
     return messageService.createConversation(participantIds);
   },
 

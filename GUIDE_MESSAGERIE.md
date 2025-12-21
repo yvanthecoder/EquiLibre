@@ -48,7 +48,7 @@ Vous devriez voir la liste de tous les utilisateurs sauf vous-même.
 ## Utilisation Frontend
 
 ### 1. Connexion
-1. Ouvrir http://localhost:5173
+1. Ouvrir http://localhost:5174
 2. Se connecter avec vos identifiants
 3. Vérifier dans la console du navigateur (F12) que le token est bien stocké :
    ```javascript

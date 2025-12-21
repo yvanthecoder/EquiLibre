@@ -140,7 +140,7 @@ Pour tester que l'inscription fonctionne correctement:
 
 ### 1. Via l'Interface Frontend
 
-1. Ouvrir http://localhost:5173
+1. Ouvrir http://localhost:5174
 2. Cliquer sur "S'inscrire"
 3. Remplir le formulaire en selectionnant un role
 4. Les champs conditionnels apparaitront selon le role:

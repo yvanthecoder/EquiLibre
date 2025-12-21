@@ -203,7 +203,7 @@ cd "/Users/yvandjopa/Documents/Projet SIGL/EquiLibre/Frontend"
 npm run dev
 ```
 
-**Le site sera accessible sur:** http://localhost:5173
+**Le site sera accessible sur:** http://localhost:5174
 
 ---
 
@@ -211,7 +211,7 @@ npm run dev
 
 ### Test 1: Inscription d'un nouvel utilisateur
 
-1. Ouvrir http://localhost:5173/register
+1. Ouvrir http://localhost:5174/register
 2. Remplir le formulaire:
    - **Prénom:** Test
    - **Nom:** User
@@ -237,7 +237,7 @@ npm run dev
 | etudiant1@equilibre.com | ETUDIANT_CLASSIQUE | Étudiant |
 | etudiant2@equilibre.com | ETUDIANT_CLASSIQUE | Étudiant |
 
-1. Ouvrir http://localhost:5173/login
+1. Ouvrir http://localhost:5174/login
 2. Entrer un email et le mot de passe
 3. Cliquer sur "Se connecter"
 4.   **Résultat attendu:** Redirection vers `/dashboard` avec le bon dashboard
@@ -304,12 +304,12 @@ npm run dev
 ### Backend (Port 5001)
 - [x] Serveur démarre sans erreur
 - [x] Health check retourne `"database": "connected"`
-- [x] CORS configuré pour port 5173
+- [x] CORS configuré pour port 5174
 - [x] Endpoint `/api/auth/register` fonctionnel
 - [x] Endpoint `/api/auth/login` fonctionnel
 - [x] JWT tokens générés correctement
 
-### Frontend (Port 5173)
+### Frontend (Port 5174)
 - [x] Serveur dev démarre sans erreur
 - [x] Page d'inscription accessible
 - [x] Page de connexion accessible
@@ -471,7 +471,7 @@ npm run dev
    ```
 
 4. **Frontend:**
-   - Ouvrir http://localhost:5173
+   - Ouvrir http://localhost:5174
    - Tester inscription → voir dashboard étudiant
    - Se déconnecter
    - Se connecter avec admin@equilibre.com → voir dashboard admin

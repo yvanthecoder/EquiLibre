@@ -12,6 +12,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const assignmentRoutes = require('./routes/assignmentRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const fileRoutes = require('./routes/fileRoutes');
+const assistantRoutes = require('./routes/assistantRoutes');
 
 // Initialiser l'application Express
 const app = express();
@@ -103,6 +104,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/assistant', assistantRoutes);
 
 // =============================================
 // GESTION DES ERREURS

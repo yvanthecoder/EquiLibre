@@ -59,7 +59,7 @@ pg_isready
 │   FRONTEND      │    BACKEND       │   DATABASE     │
 │   (React+Vite)  │    (Express)     │  (PostgreSQL)  │
 │                 │                  │                │
-│   Port: 5173    │    Port: 5001    │   Port: 5432   │
+│   Port: 5174    │    Port: 5001    │   Port: 5432   │
 │                 │                  │                │
 └─────────────────┴──────────────────┴────────────────┘
 ```
@@ -106,7 +106,7 @@ DB_USER=yvandjopa
 DB_PASSWORD=
 JWT_SECRET=equilibre_secret_key_2024_change_in_production
 JWT_EXPIRE=7d
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:5174
 ```
 
 ### Étape 4 : Initialiser la base de données
@@ -199,7 +199,7 @@ npm install    # Si pas encore fait
 npm run dev
 ```
 
-Le frontend démarrera sur **http://localhost:5173**
+Le frontend démarrera sur **http://localhost:5174**
 
 **  IMPORTANT :** Utilisez `npm run dev` (pas `npm start`)
 

@@ -9,6 +9,7 @@ import {
   Cog6ToothIcon,
   UserGroupIcon,
   FolderIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/user';
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'Calendrier', href: '/calendar', icon: CalendarIcon },
   { name: 'Messages', href: '/messages', icon: ChatBubbleLeftRightIcon },
   { name: 'Annuaire', href: '/directory', icon: UserGroupIcon },
+  { name: 'My Assistant', href: '/assistant', icon: SparklesIcon },
 ];
 
 const adminNavigation = [

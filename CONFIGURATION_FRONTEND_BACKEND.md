@@ -9,7 +9,7 @@ Guide pour connecter votre frontend React (Vite) au backend Express.
 | Composant | Port | URL | Commande |
 |-----------|------|-----|----------|
 | **Backend** | 5001 | http://localhost:5001 | `cd Backend && npm start` |
-| **Frontend** | 5173 | http://localhost:5173 | `cd Frontend && npm run dev` |
+| **Frontend** | 5174 | http://localhost:5174 | `cd Frontend && npm run dev` |
 | **Database** | 5432 | localhost | PostgreSQL |
 
 ---
@@ -22,14 +22,14 @@ Le fichier `Backend/.env` est configuré pour accepter les requêtes du frontend
 
 ```env
 # Frontend URL (Vite)
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:5174
 ```
 
 Le CORS est déjà configuré dans `Backend/src/server.js` :
 
 ```javascript
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL || 'http://localhost:5174',
     credentials: true
 }));
 ```
@@ -297,7 +297,7 @@ curl -X POST http://localhost:5001/api/auth/login \
 Si vous voyez cette erreur dans la console :
 
 ```
-Access to fetch at 'http://localhost:5001/api/...' from origin 'http://localhost:5173'
+Access to fetch at 'http://localhost:5001/api/...' from origin 'http://localhost:5174'
 has been blocked by CORS policy
 ```
 
@@ -342,7 +342,7 @@ npm start
 ```bash
 cd Frontend
 npm run dev
-#   Frontend sur http://localhost:5173
+#   Frontend sur http://localhost:5174
 ```
 
 ### Terminal 3 - Tests
@@ -361,7 +361,7 @@ curl -X POST http://localhost:5001/api/auth/login \
 ##   Résumé
 
 **Ce qui est déjà configuré :**
-1.   Backend accepte les requêtes depuis http://localhost:5173
+1.   Backend accepte les requêtes depuis http://localhost:5174
 2.   Frontend configuré pour appeler http://localhost:5001
 3.   Service d'authentification prêt à l'emploi
 4.   Types TypeScript pour les 5 rôles

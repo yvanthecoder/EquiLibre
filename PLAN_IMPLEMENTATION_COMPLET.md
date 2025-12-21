@@ -17,7 +17,7 @@
 
 ### Backend API  
 - [x] Server Express configuré (port 5001)
-- [x] CORS configuré pour frontend (port 5173)
+- [x] CORS configuré pour frontend (port 5174)
 - [x] Authentification JWT
 - [x] Routes auth (/api/auth/login, /api/auth/register)
 - [x] Routes notifications (/api/notifications)

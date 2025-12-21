@@ -12,10 +12,10 @@ Date : 16 novembre 2025
 
 ```diff
 - FRONTEND_URL=http://localhost:3000
-+ FRONTEND_URL=http://localhost:5173
++ FRONTEND_URL=http://localhost:5174
 ```
 
-**Pourquoi ?** Le frontend Vite tourne sur le port 5173, pas 3000.
+**Pourquoi ?** Le frontend Vite tourne sur le port 5174, pas 3000.
 
 ---
 
@@ -114,9 +114,9 @@ saveToken(response.data.token);
 
 | Aspect | Avant | Après |
 |--------|-------|-------|
-| **Port Frontend** | 3000 | 5173 (Vite) |
+| **Port Frontend** | 3000 | 5174 (Vite) |
 | **Commande Frontend** | `npm start` | `npm run dev` |
-| **CORS Backend** | Port 3000 | Port 5173 |
+| **CORS Backend** | Port 3000 | Port 5174 |
 | **Config API Frontend** |   Manquante |   Créée |
 | **Service Auth** |   Manquant |   Créé |
 | **Types TypeScript** |   Incomplets |   Complets |
@@ -136,7 +136,7 @@ npm start
 ```bash
 cd Frontend
 npm run dev
-#   http://localhost:5173
+#   http://localhost:5174
 ```
 
 ### Terminal 3 - Tests
@@ -145,7 +145,7 @@ npm run dev
 curl http://localhost:5001/health
 
 # Test frontend
-# Ouvrir http://localhost:5173 dans le navigateur
+# Ouvrir http://localhost:5174 dans le navigateur
 ```
 
 ---
@@ -238,7 +238,7 @@ npm run preview  # Preview du build
 │                  │                │         │
 │   FRONTEND       │   BACKEND      │  DB     │
 │   React + Vite   │   Express      │  PG     │
-│   Port: 5173     │   Port: 5001   │  5432   │
+│   Port: 5174     │   Port: 5001   │  5432   │
 │                  │                │         │
 │   • Login        │   • JWT Auth   │  users  │
 │   • Dashboard    │   • CORS       │  classes│
