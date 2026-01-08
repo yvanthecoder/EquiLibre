@@ -14,6 +14,8 @@ import {
   eachDayOfInterval,
   isSameMonth,
   isToday,
+  startOfWeek,
+  endOfWeek,
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -76,7 +78,9 @@ export const Calendar: React.FC = () => {
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // lundi
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 }); // dimanche
+  const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const combinedEvents = useMemo(() => {
     const base = events || [];
