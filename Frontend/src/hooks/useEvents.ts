@@ -29,7 +29,6 @@ export const useCreateEvent = (defaultClassId?: string) => {
     },
     onSuccess: (data, variables) => {
       const classId = variables.classId || defaultClassId || '';
-      // push optimiste pour affichage immédiat
       queryClient.setQueryData<Event[] | undefined>(['events', classId], (old) => {
         const next = (old || []).slice();
         next.push({
@@ -46,7 +45,7 @@ export const useCreateEvent = (defaultClassId?: string) => {
       if (classId) {
         queryClient.invalidateQueries({ queryKey: ['events', classId] });
       }
-      toast.success('Événement créé avec succès !');
+      toast.success('Événement créé avec succès');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la création';
@@ -60,15 +59,15 @@ export const useCreateEvent = (defaultClassId?: string) => {
   };
 };
 
-export const useUpdateEvent = (classId: string, eventId: string) => {
+export const useUpdateEvent = (classId: string) => {
   const queryClient = useQueryClient();
 
   const updateMutation = useMutation({
-    mutationFn: (updates: Partial<CreateEventRequest>) =>
+    mutationFn: ({ eventId, updates }: { eventId: string; updates: Partial<CreateEventRequest> }) =>
       classService.updateEvent(classId, eventId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events', classId] });
-      toast.success('Événement mis à jour !');
+      toast.success('Événement mis à jour');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
@@ -77,10 +76,10 @@ export const useUpdateEvent = (classId: string, eventId: string) => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => classService.deleteEvent(classId, eventId),
+    mutationFn: (eventId: string) => classService.deleteEvent(classId, eventId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events', classId] });
-      toast.success('Événement supprimé !');
+      toast.success('Événement supprimé');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la suppression';

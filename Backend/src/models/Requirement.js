@@ -111,6 +111,33 @@ class Requirement {
         return result.rows;
     }
 
+    // Obtenir les requirements pour un jury/intervenant via soutenances
+    static async findByJuryUserId(userId) {
+        const sql = `
+            SELECT DISTINCT r.id,
+                   r.title,
+                   r.description,
+                   r.class_id as "classId",
+                   r.created_by as "createdBy",
+                   r.due_date as "dueDate",
+                   r.status,
+                   r.created_at as "createdAt",
+                   r.updated_at as "updatedAt",
+                   r.validation_comment as "validationComment",
+                   r.validated_at as "validatedAt",
+                   r.validated_by as "validatedBy",
+                   c.name as class_name
+            FROM requirements r
+            INNER JOIN classes c ON r.class_id = c.id
+            INNER JOIN soutenances s ON s.class_id = c.id
+            INNER JOIN soutenance_jury sj ON sj.soutenance_id = s.id
+            WHERE sj.user_id = $1
+            ORDER BY r.due_date ASC NULLS LAST, r.created_at DESC
+        `;
+        const result = await query(sql, [userId]);
+        return result.rows;
+    }
+
     // Valider un requirement
     static async validate(requirementId, validatedBy, status, comment) {
         const sql = `

@@ -3,15 +3,11 @@ import {
   Requirement,
   CreateRequirementRequest,
   UpdateRequirementRequest,
-  Submission,
 } from '../types/api';
 import { requirementService, classService } from '../services/api.service';
 import toast from 'react-hot-toast';
 
 export const useRequirements = (classId?: string) => {
-  const queryClient = useQueryClient();
-
-  // Fetch all requirements for a class
   const { data: requirements, isLoading } = useQuery({
     queryKey: ['requirements', classId],
     queryFn: () => classService.getClassRequirements(classId!),
@@ -27,26 +23,23 @@ export const useRequirements = (classId?: string) => {
 export const useRequirement = (requirementId?: string) => {
   const queryClient = useQueryClient();
 
-  // Fetch single requirement
   const { data: requirement, isLoading } = useQuery({
     queryKey: ['requirements', requirementId],
     queryFn: () => requirementService.getRequirement(requirementId!),
     enabled: !!requirementId,
   });
 
-  // Fetch submissions for a requirement
   const { data: submissions, isLoading: isLoadingSubmissions } = useQuery({
     queryKey: ['requirements', requirementId, 'submissions'],
     queryFn: () => requirementService.getSubmissions(requirementId!),
     enabled: !!requirementId,
   });
 
-  // Submit requirement mutation
   const submitMutation = useMutation({
     mutationFn: (file: File) => requirementService.submitRequirement(requirementId!, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requirements', requirementId, 'submissions'] });
-      toast.success('Document soumis avec succès !');
+      toast.success('Document soumis avec succès');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la soumission';
@@ -54,7 +47,6 @@ export const useRequirement = (requirementId?: string) => {
     },
   });
 
-  // Update submission status mutation (for instructors)
   const updateSubmissionStatusMutation = useMutation({
     mutationFn: ({
       submissionId,
@@ -67,7 +59,7 @@ export const useRequirement = (requirementId?: string) => {
     }) => requirementService.updateSubmissionStatus(requirementId!, submissionId, status, feedback),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requirements', requirementId, 'submissions'] });
-      toast.success('Statut mis à jour !');
+      toast.success('Statut mis à jour');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
@@ -94,7 +86,7 @@ export const useCreateRequirement = () => {
     mutationFn: (data: CreateRequirementRequest) => requirementService.createRequirement(data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['requirements', variables.classId] });
-      toast.success('Exigence créée avec succès !');
+      toast.success('Exigence créée avec succès');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la création';
@@ -112,11 +104,10 @@ export const useUpdateRequirement = (requirementId: string) => {
   const queryClient = useQueryClient();
 
   const updateMutation = useMutation({
-    mutationFn: (data: UpdateRequirementRequest) =>
-      requirementService.updateRequirement(requirementId, data),
+    mutationFn: (data: UpdateRequirementRequest) => requirementService.updateRequirement(requirementId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requirements', requirementId] });
-      toast.success('Exigence mise à jour !');
+      toast.success('Exigence mise à jour');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
@@ -128,7 +119,7 @@ export const useUpdateRequirement = (requirementId: string) => {
     mutationFn: () => requirementService.deleteRequirement(requirementId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requirements'] });
-      toast.success('Exigence supprimée !');
+      toast.success('Exigence supprimée');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la suppression';
@@ -144,7 +135,6 @@ export const useUpdateRequirement = (requirementId: string) => {
   };
 };
 
-// Hook for submitting a requirement (student side)
 export const useSubmitRequirement = () => {
   const queryClient = useQueryClient();
 
@@ -152,11 +142,9 @@ export const useSubmitRequirement = () => {
     mutationFn: ({ requirementId, file }: { requirementId: string; file: File }) =>
       requirementService.submitRequirement(requirementId, file),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['requirements', variables.requirementId, 'submissions']
-      });
+      queryClient.invalidateQueries({ queryKey: ['requirements', variables.requirementId, 'submissions'] });
       queryClient.invalidateQueries({ queryKey: ['requirements'] });
-      toast.success('Document soumis avec succès !');
+      toast.success('Document soumis avec succès');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la soumission';

@@ -129,7 +129,14 @@ export const InstructorDashboard: React.FC = () => {
           <div className="space-y-3">
             {upcomingEvents?.length ? (
               upcomingEvents.map(event => (
-                <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
+                <div
+                  key={event.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                  onClick={() => {
+                    const dateParam = format(new Date(event.startDate), 'yyyy-MM-dd');
+                    navigate(`/calendar?date=${dateParam}&eventId=${event.id}`);
+                  }}
+                >
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900">{event.title}</h3>
                     <p className="text-sm text-gray-600">

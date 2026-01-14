@@ -28,7 +28,7 @@ export const AdminCalendar: React.FC = () => {
   const { createEvent, isCreating } = useCreateEvent(selectedClassId);
 
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
-  const { updateEvent, deleteEvent, isDeleting, isUpdating } = useUpdateEvent(selectedClassId || '', selectedEvent?.id || '');
+  const { updateEvent, deleteEvent, isDeleting, isUpdating } = useUpdateEvent(selectedClassId || '');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateEventRequest>();
@@ -49,8 +49,11 @@ export const AdminCalendar: React.FC = () => {
     if (selectedEvent) {
       updateEvent(
         {
-          ...data,
-          classId: selectedClassId,
+          eventId: selectedEvent.id.toString(),
+          updates: {
+            ...data,
+            classId: selectedClassId,
+          },
         },
         {
           onSuccess: () => {
@@ -73,8 +76,7 @@ export const AdminCalendar: React.FC = () => {
   const handleDelete = (id: string) => {
     if (!selectedClassId) return;
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
-      setSelectedEvent({ id });
-      deleteEvent();
+      deleteEvent(id);
     }
   };
 
@@ -126,19 +128,10 @@ export const AdminCalendar: React.FC = () => {
       header: 'Actions',
       accessor: (row: any) => (
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleEdit(row)}
-          >
+          <Button size="sm" variant="outline" onClick={() => handleEdit(row)}>
             <PencilIcon className="h-4 w-4" />
           </Button>
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() => handleDelete(row.id)}
-            disabled={isDeleting}
-          >
+          <Button size="sm" variant="danger" onClick={() => handleDelete(row.id)} disabled={isDeleting}>
             <TrashIcon className="h-4 w-4" />
           </Button>
         </div>
@@ -150,7 +143,9 @@ export const AdminCalendar: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>← Retour</Button>
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+            Retour
+          </Button>
           <h1 className="text-2xl font-bold text-gray-900">Gestion du calendrier</h1>
           <select
             value={selectedClassId}
@@ -180,15 +175,10 @@ export const AdminCalendar: React.FC = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         ) : (
-          <Table
-            data={events || []}
-            columns={columns}
-            emptyMessage="Aucun événement créé"
-          />
+          <Table data={events || []} columns={columns} emptyMessage="Aucun événement créé" />
         )}
       </Card>
 
-      {/* Create/Edit Modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => {
@@ -201,23 +191,17 @@ export const AdminCalendar: React.FC = () => {
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Titre *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
             <input
               {...register('title', { required: 'Titre requis' })}
               type="text"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
-            {errors.title && (
-              <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
-            )}
+            {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               {...register('description')}
               rows={3}
@@ -226,9 +210,7 @@ export const AdminCalendar: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Type *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
             <select
               {...register('type', { required: 'Type requis' })}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -239,38 +221,28 @@ export const AdminCalendar: React.FC = () => {
               <option value="DEADLINE">Échéance</option>
               <option value="MEETING">Réunion</option>
             </select>
-            {errors.type && (
-              <p className="mt-1 text-sm text-red-600">{errors.type.message}</p>
-            )}
+            {errors.type && <p className="mt-1 text-sm text-red-600">{errors.type.message}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date début *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date début *</label>
               <input
                 {...register('startDate', { required: 'Date de début requise' })}
                 type="datetime-local"
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
-              {errors.startDate && (
-                <p className="mt-1 text-sm text-red-600">{errors.startDate.message}</p>
-              )}
+              {errors.startDate && <p className="mt-1 text-sm text-red-600">{errors.startDate.message}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date fin *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date fin *</label>
               <input
                 {...register('endDate', { required: 'Date de fin requise' })}
                 type="datetime-local"
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
-              {errors.endDate && (
-                <p className="mt-1 text-sm text-red-600">{errors.endDate.message}</p>
-              )}
+              {errors.endDate && <p className="mt-1 text-sm text-red-600">{errors.endDate.message}</p>}
             </div>
           </div>
 

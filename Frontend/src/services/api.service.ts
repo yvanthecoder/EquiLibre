@@ -3,7 +3,6 @@ import {
   User,
   LoginRequest,
   RegisterRequest,
-  AuthTokens,
   Requirement,
   Submission,
   Event,
@@ -18,16 +17,20 @@ import {
   CreateThreadRequest,
   SendMessageRequest,
   UpdateUserRequest,
+  Journal,
+  Interview,
+  Soutenance,
+  EvaluationGrid,
+  Evaluation,
+  EvaluationScore,
 } from '../types/api';
 
 // ==================== AUTH ENDPOINTS ====================
 
 export const authService = {
-  login: async (credentials: LoginRequest): Promise<{ user: User; tokens: AuthTokens }> => {
+  login: async (credentials: LoginRequest): Promise<{ user: User }> => {
     const response = await api.post('/auth/login', credentials);
-    // Transform backend response: { success, data: { token, user } }
-    // to frontend format: { user, tokens: { access_token, refresh_token } }
-    const { token, user: backendUser } = response.data.data;
+    const { user: backendUser } = response.data.data;
     return {
       user: {
         id: backendUser.id.toString(),
@@ -38,14 +41,10 @@ export const authService = {
         avatar: backendUser.profile_picture,
         createdAt: backendUser.created_at,
       },
-      tokens: {
-        access_token: token,
-        refresh_token: token, // Backend uses single token for now
-      },
     };
   },
 
-  register: async (userData: RegisterRequest): Promise<{ user: User; tokens: AuthTokens }> => {
+  register: async (userData: RegisterRequest): Promise<{ user: User }> => {
     // Transform camelCase to lowercase for backend compatibility
     const backendData: any = {
       email: userData.email,
@@ -68,9 +67,7 @@ export const authService = {
     console.log('Sending registration data:', backendData);
 
     const response = await api.post('/auth/register', backendData);
-    // Transform backend response: { success, data: { token, user } }
-    // to frontend format: { user, tokens: { access_token, refresh_token } }
-    const { token, user: backendUser } = response.data.data;
+    const { user: backendUser } = response.data.data;
     return {
       user: {
         id: backendUser.id.toString(),
@@ -81,19 +78,11 @@ export const authService = {
         avatar: backendUser.profile_picture,
         createdAt: backendUser.created_at,
       },
-      tokens: {
-        access_token: token,
-        refresh_token: token, // Backend uses single token for now
-      },
     };
   },
 
-  refreshToken: async (refreshToken: string): Promise<AuthTokens> => {
-    // Backend doesn't have refresh endpoint yet, return same token
-    return {
-      access_token: refreshToken,
-      refresh_token: refreshToken,
-    };
+  refreshToken: async (): Promise<void> => {
+    await api.post('/auth/refresh');
   },
 
   getCurrentUser: async (): Promise<User> => {
@@ -594,6 +583,166 @@ export const notificationService = {
 
   deleteNotification: async (notificationId: string): Promise<void> => {
     await api.delete(`/notifications/${notificationId}`);
+  },
+};
+
+// ==================== JOURNAL ENDPOINTS ====================
+
+export const journalService = {
+  getMyJournals: async (): Promise<Journal[]> => {
+    const response = await api.get('/journals/me');
+    return response.data.data || [];
+  },
+
+  getJournal: async (journalId: string): Promise<Journal> => {
+    const response = await api.get(`/journals/${journalId}`);
+    return response.data.data;
+  },
+
+  getClassJournals: async (classId: string): Promise<Journal[]> => {
+    const response = await api.get(`/journals/class/${classId}`);
+    return response.data.data || [];
+  },
+
+  createJournal: async (payload: Partial<Journal>): Promise<Journal> => {
+    const response = await api.post('/journals', payload);
+    return response.data.data;
+  },
+
+  updateJournal: async (journalId: string, payload: Partial<Journal>): Promise<Journal> => {
+    const response = await api.put(`/journals/${journalId}`, payload);
+    return response.data.data;
+  },
+
+  submitJournal: async (journalId: string): Promise<Journal> => {
+    const response = await api.post(`/journals/${journalId}/submit`);
+    return response.data.data;
+  },
+
+  validateJournal: async (journalId: string, status: 'VALIDATED' | 'ARCHIVED', comment?: string): Promise<Journal> => {
+    const response = await api.post(`/journals/${journalId}/validate`, { status, comment });
+    return response.data.data;
+  },
+};
+
+// ==================== INTERVIEW ENDPOINTS ====================
+
+export const interviewService = {
+  getInterviews: async (): Promise<Interview[]> => {
+    const response = await api.get('/interviews');
+    return response.data.data || [];
+  },
+
+  getInterview: async (interviewId: string): Promise<Interview> => {
+    const response = await api.get(`/interviews/${interviewId}`);
+    return response.data.data;
+  },
+
+  createInterview: async (payload: Partial<Interview> & { studentId: string; scheduledAt: string }): Promise<Interview> => {
+    const response = await api.post('/interviews', payload);
+    return response.data.data;
+  },
+
+  updateInterview: async (interviewId: string, payload: Partial<Interview>): Promise<Interview> => {
+    const response = await api.put(`/interviews/${interviewId}`, payload);
+    return response.data.data;
+  },
+
+  deleteInterview: async (interviewId: string): Promise<void> => {
+    await api.delete(`/interviews/${interviewId}`);
+  },
+};
+
+// ==================== SOUTENANCE ENDPOINTS ====================
+
+export const soutenanceService = {
+  getSoutenances: async (classId?: string): Promise<Soutenance[]> => {
+    const params = classId ? `?classId=${classId}` : '';
+    const response = await api.get(`/soutenances${params}`);
+    return response.data.data || [];
+  },
+
+  getSoutenance: async (soutenanceId: string): Promise<Soutenance> => {
+    const response = await api.get(`/soutenances/${soutenanceId}`);
+    return response.data.data;
+  },
+
+  createSoutenance: async (payload: Partial<Soutenance> & { classId: string; title: string; scheduledAt: string }): Promise<Soutenance> => {
+    const response = await api.post('/soutenances', payload);
+    return response.data.data;
+  },
+
+  updateSoutenance: async (soutenanceId: string, payload: Partial<Soutenance>): Promise<Soutenance> => {
+    const response = await api.put(`/soutenances/${soutenanceId}`, payload);
+    return response.data.data;
+  },
+
+  deleteSoutenance: async (soutenanceId: string): Promise<void> => {
+    await api.delete(`/soutenances/${soutenanceId}`);
+  },
+
+  listJury: async (soutenanceId: string): Promise<any[]> => {
+    const response = await api.get(`/soutenances/${soutenanceId}/jury`);
+    return response.data.data || [];
+  },
+
+  addJury: async (soutenanceId: string, userId: string): Promise<any> => {
+    const response = await api.post(`/soutenances/${soutenanceId}/jury`, { userId });
+    return response.data.data;
+  },
+
+  removeJury: async (soutenanceId: string, userId: string): Promise<void> => {
+    await api.delete(`/soutenances/${soutenanceId}/jury/${userId}`);
+  },
+};
+
+// ==================== EVALUATION ENDPOINTS ====================
+
+export const evaluationGridService = {
+  getGrids: async (): Promise<EvaluationGrid[]> => {
+    const response = await api.get('/evaluation-grids');
+    return response.data.data || [];
+  },
+
+  getGrid: async (gridId: string): Promise<EvaluationGrid> => {
+    const response = await api.get(`/evaluation-grids/${gridId}`);
+    return response.data.data;
+  },
+
+  createGrid: async (payload: Partial<EvaluationGrid>): Promise<EvaluationGrid> => {
+    const response = await api.post('/evaluation-grids', payload);
+    return response.data.data;
+  },
+
+  updateGrid: async (gridId: string, payload: Partial<EvaluationGrid>): Promise<EvaluationGrid> => {
+    const response = await api.put(`/evaluation-grids/${gridId}`, payload);
+    return response.data.data;
+  },
+
+  deleteGrid: async (gridId: string): Promise<void> => {
+    await api.delete(`/evaluation-grids/${gridId}`);
+  },
+};
+
+export const evaluationService = {
+  createEvaluation: async (payload: Partial<Evaluation> & { studentId: string; contextType: 'JOURNAL' | 'REQUIREMENT' | 'SOUTENANCE'; contextId: string }): Promise<Evaluation> => {
+    const response = await api.post('/evaluations', payload);
+    return response.data.data;
+  },
+
+  getStudentEvaluations: async (studentId: string): Promise<Evaluation[]> => {
+    const response = await api.get(`/evaluations/student/${studentId}`);
+    return response.data.data || [];
+  },
+
+  getContextEvaluations: async (contextType: string, contextId: string): Promise<Evaluation[]> => {
+    const response = await api.get(`/evaluations?contextType=${contextType}&contextId=${contextId}`);
+    return response.data.data || [];
+  },
+
+  getEvaluationScores: async (evaluationId: string): Promise<EvaluationScore[]> => {
+    const response = await api.get(`/evaluations/${evaluationId}/scores`);
+    return response.data.data || [];
   },
 };
 

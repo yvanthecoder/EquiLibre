@@ -34,28 +34,28 @@ export const Dashboard: React.FC = () => {
       ALTERNANT: 'Bon retour sur votre espace alternant',
       ETUDIANT_CLASSIQUE: 'Bienvenue sur votre espace étudiant',
       TUTEUR_ECOLE: 'Bienvenue sur votre espace tuteur',
-      MAITRE_APP: 'Bienvenue sur votre espace maître d\'apprentissage',
+      MAITRE_APP: "Bienvenue sur votre espace maître d'apprentissage",
       ADMIN: 'Tableau de bord administrateur',
+      JURY: 'Bienvenue sur votre espace jury',
+      INTERVENANT: 'Bienvenue sur votre espace intervenant',
     };
     return greetings[role as keyof typeof greetings] || 'Bienvenue';
   };
 
-  // Render role-specific dashboard
   const renderDashboard = () => {
     switch (user.role) {
       case 'ALTERNANT':
       case 'ETUDIANT_CLASSIQUE':
         return <StudentDashboard />;
-
       case 'ADMIN':
         return <AdminDashboard />;
-
       case 'TUTEUR_ECOLE':
         return <InstructorDashboard />;
-
       case 'MAITRE_APP':
         return <MaitreAppDashboard />;
-
+      case 'JURY':
+      case 'INTERVENANT':
+        return <InstructorDashboard />;
       default:
         return (
           <div className="text-center py-12">
@@ -68,9 +68,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          {getDashboardGreeting(user.role)}
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900">{getDashboardGreeting(user.role)}</h1>
         <p className="text-gray-600">
           {user.firstName} {user.lastName}
         </p>

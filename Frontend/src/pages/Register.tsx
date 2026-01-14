@@ -33,11 +33,14 @@ const baseSchema = {
   password: yup.string().min(6, 'Minimum 6 caractères').required('Mot de passe requis'),
   firstName: yup.string().required('Prénom requis'),
   lastName: yup.string().required('Nom requis'),
-  role: yup.string().oneOf(['ALTERNANT', 'ETUDIANT_CLASSIQUE', 'TUTEUR_ECOLE', 'MAITRE_APP', 'ADMIN']).required('Rôle requis'),
+  role: yup.string().oneOf(['ALTERNANT', 'ETUDIANT_CLASSIQUE', 'TUTEUR_ECOLE', 'MAITRE_APP', 'ADMIN', 'JURY', 'INTERVENANT']).required('Rôle requis'),
   phone: yup.string(),
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const RAW_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = RAW_API_URL.endsWith('/api')
+  ? RAW_API_URL.slice(0, -4)
+  : RAW_API_URL;
 
 export const Register: React.FC = () => {
   const { register: registerUser, isAuthenticated } = useAuth();
@@ -237,6 +240,8 @@ export const Register: React.FC = () => {
                 <option value="TUTEUR_ECOLE">Tuteur d'école</option>
                 <option value="MAITRE_APP">Maître d'apprentissage</option>
                 <option value="ADMIN">Administrateur</option>
+                <option value="JURY">Jury / Professeur</option>
+                <option value="INTERVENANT">Intervenant externe</option>
               </select>
               {errors.role && (
                 <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>

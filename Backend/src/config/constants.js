@@ -8,7 +8,9 @@ const USER_ROLES = {
     ETUDIANT_CLASSIQUE: 'ETUDIANT_CLASSIQUE',
     MAITRE_APP: 'MAITRE_APP',
     TUTEUR_ECOLE: 'TUTEUR_ECOLE',
-    ADMIN: 'ADMIN'
+    ADMIN: 'ADMIN',
+    JURY: 'JURY',
+    INTERVENANT: 'INTERVENANT'
 };
 
 // Statuts des requirements
@@ -87,6 +89,24 @@ const ROLE_PERMISSIONS = {
         canManageUsers: false,
         canManageClasses: false,
         canViewOwnData: true
+    },
+    JURY: {
+        canCreateRequirements: false,
+        canEditRequirements: false,
+        canDeleteRequirements: false,
+        canValidateRequirements: true,
+        canManageUsers: false,
+        canManageClasses: false,
+        canViewClassData: true
+    },
+    INTERVENANT: {
+        canCreateRequirements: false,
+        canEditRequirements: false,
+        canDeleteRequirements: false,
+        canValidateRequirements: true,
+        canManageUsers: false,
+        canManageClasses: false,
+        canViewClassData: true
     }
 };
 

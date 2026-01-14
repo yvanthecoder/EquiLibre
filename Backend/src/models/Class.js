@@ -60,6 +60,40 @@ class Class {
         return result.rows;
     }
 
+    // Obtenir les classes associées à un maître d'apprentissage
+    static async findByMaitreId(maitreId) {
+        const sql = `
+            SELECT DISTINCT c.*,
+                   u.firstname as tuteur_firstname,
+                   u.lastname as tuteur_lastname
+            FROM classes c
+            LEFT JOIN users u ON c.tuteur_id = u.id
+            INNER JOIN users s ON s.class_id = c.id
+            INNER JOIN assignments a ON a.student_id = s.id
+            WHERE a.maitre_id = $1 AND c.is_active = true
+            ORDER BY c.year DESC, c.name
+        `;
+        const result = await query(sql, [maitreId]);
+        return result.rows;
+    }
+
+    // Obtenir les classes associées à un jury/intervenant
+    static async findByJuryUserId(userId) {
+        const sql = `
+            SELECT DISTINCT c.*,
+                   u.firstname as tuteur_firstname,
+                   u.lastname as tuteur_lastname
+            FROM classes c
+            LEFT JOIN users u ON c.tuteur_id = u.id
+            INNER JOIN soutenances s ON s.class_id = c.id
+            INNER JOIN soutenance_jury sj ON sj.soutenance_id = s.id
+            WHERE sj.user_id = $1 AND c.is_active = true
+            ORDER BY c.year DESC, c.name
+        `;
+        const result = await query(sql, [userId]);
+        return result.rows;
+    }
+
     // Obtenir les classes d'un tuteur
     static async findByTuteurId(tuteurId) {
         const sql = `

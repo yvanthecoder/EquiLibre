@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
-import { useCreateEvent, useEvents } from '../hooks/useEvents';
+import { useCreateEvent, useEvents, useUpdateEvent } from '../hooks/useEvents';
+import { useCreateInterview, useInterviews } from '../hooks/useInterviews';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { Modal } from '../components/UI/Modal';
 import { CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
 import {
   format,
-  formatISO,
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
@@ -18,12 +18,12 @@ import {
 import { fr } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { classService } from '../services/api.service';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const academicEvents = [
   {
     id: 'AC-EXAMS-1',
-    title: 'Période d’évaluations',
+    title: "Période d'évaluations",
     description: 'Contrôles intermédiaires',
     startDate: '2025-01-10T08:00:00',
     endDate: '2025-01-20T18:00:00',
@@ -54,13 +54,16 @@ export const Calendar: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Classe active (fallback si l'utilisateur n'a pas classId direct)
   const [activeClassId, setActiveClassId] = useState<string | undefined>(user?.classId);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -70,18 +73,48 @@ export const Calendar: React.FC = () => {
   const [endTime, setEndTime] = useState<string>('10:00');
   const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
   const [showAcademic, setShowAcademic] = useState<boolean>(true);
+  const [interviewDate, setInterviewDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [interviewTime, setInterviewTime] = useState<string>('14:00');
+  const [interviewLocation, setInterviewLocation] = useState<string>('');
 
-  const { data: events, isLoading } = useEvents(activeClassId || user?.classId);
+  const { events, isLoading } = useEvents(activeClassId || user?.classId);
   const { createEvent, isCreating } = useCreateEvent();
+  const { updateEvent, deleteEvent, isUpdating, isDeleting } = useUpdateEvent(activeClassId || '');
+  const { data: interviews = [] } = useInterviews();
+  const { mutate: createInterview, isPending: creatingInterview } = useCreateInterview();
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
+  const interviewEvents = useMemo(() => {
+    const statusLabels: Record<string, string> = {
+      PROPOSED: 'Proposé',
+      PLANNED: 'Planifié',
+      CONFIRMED: 'Confirmé',
+      COMPLETED: 'Terminé',
+      ARCHIVED: 'Archivé',
+    };
+    return (interviews || []).map((interview) => {
+      const start = new Date(interview.scheduledAt);
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
+      return {
+        id: `INT-${interview.id}`,
+        title: 'Entretien semestriel',
+        description: `Statut: ${statusLabels[interview.status] || interview.status}`,
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        classId: activeClassId || user?.classId || '',
+        type: 'MEETING' as const,
+      };
+    });
+  }, [interviews, activeClassId, user?.classId]);
+
   const combinedEvents = useMemo(() => {
     const base = events || [];
-    return showAcademic ? [...base, ...academicEvents] : base;
-  }, [events, showAcademic]);
+    const withInterviews = [...base, ...interviewEvents];
+    return showAcademic ? [...withInterviews, ...academicEvents] : withInterviews;
+  }, [events, interviewEvents, showAcademic]);
 
   const getEventsForDay = (day: Date) => {
     const target = format(day, 'yyyy-MM-dd');
@@ -122,7 +155,7 @@ export const Calendar: React.FC = () => {
 
   const handleOpenCreate = () => {
     if (!activeClassId) {
-      toast.error('Aucune classe associée, impossible de créer un événement.');
+      toast.error("Aucune classe associée, impossible de créer un événement.");
       return;
     }
     const baseDate = selectedDay || new Date();
@@ -135,7 +168,15 @@ export const Calendar: React.FC = () => {
     setShowCreateModal(true);
   };
 
-  const handleCreateEvent = () => {
+  const handleOpenInterview = () => {
+    const baseDate = selectedDay || new Date();
+    setInterviewDate(format(baseDate, 'yyyy-MM-dd'));
+    setInterviewTime('14:00');
+    setInterviewLocation('');
+    setShowInterviewModal(true);
+  };
+
+  const handleSubmitEvent = () => {
     if (!title.trim()) {
       toast.error('Titre requis');
       return;
@@ -150,6 +191,34 @@ export const Calendar: React.FC = () => {
 
     if (new Date(endDateString) <= new Date(startDateString)) {
       toast.error("L'heure de fin doit être après le début");
+      return;
+    }
+
+    if (editingEvent) {
+      updateEvent(
+        {
+          eventId: editingEvent.id.toString(),
+          updates: {
+            title: title.trim(),
+            description: description.trim(),
+            startDate: startDateString,
+            endDate: endDateString,
+            type: eventType,
+          },
+        },
+        {
+          onSuccess: () => {
+            toast.success('Événement mis à jour');
+            queryClient.invalidateQueries({ queryKey: ['events', activeClassId] });
+            setShowCreateModal(false);
+            setEditingEvent(null);
+          },
+          onError: (err: any) => {
+            const message = err.response?.data?.message || 'Erreur lors de la mise à jour';
+            toast.error(message);
+          },
+        }
+      );
       return;
     }
 
@@ -179,9 +248,14 @@ export const Calendar: React.FC = () => {
   const handleDayClick = (day: Date) => {
     setSelectedDay(day);
     setShowDayModal(true);
+    setFocusedEventId(null);
+    const isoDate = format(day, 'yyyy-MM-dd');
+    const next = new URLSearchParams(searchParams);
+    next.set('date', isoDate);
+    next.delete('eventId');
+    setSearchParams(next, { replace: true });
   };
 
-  // Récupérer une classe de fallback pour les tuteurs/admin sans classId direct
   React.useEffect(() => {
     const loadClasses = async () => {
       if (user?.classId) {
@@ -201,6 +275,22 @@ export const Calendar: React.FC = () => {
     loadClasses();
   }, [user?.classId]);
 
+  React.useEffect(() => {
+    const dateParam = searchParams.get('date');
+    const eventIdParam = searchParams.get('eventId');
+    if (dateParam) {
+      const parsed = new Date(dateParam);
+      if (!isNaN(parsed.getTime())) {
+        setCurrentDate(parsed);
+        setSelectedDay(parsed);
+        setShowDayModal(true);
+        if (eventIdParam) {
+          setFocusedEventId(eventIdParam);
+        }
+      }
+    }
+  }, [searchParams]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -209,22 +299,27 @@ export const Calendar: React.FC = () => {
     );
   }
 
+  const canManageEvents = ['ADMIN', 'TUTEUR_ECOLE', 'MAITRE_APP'].includes(user?.role || '');
+  const canProposeInterview = ['ALTERNANT', 'ETUDIANT_CLASSIQUE'].includes(user?.role || '');
+
   return (
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => navigate(-1)}>← Retour</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+              Retour
+            </Button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Calendrier</h1>
               <p className="text-gray-600">Consultez vos cours, examens et échéances</p>
             </div>
           </div>
-        <div className="flex items-center gap-3">
-          {availableClasses.length > 1 && (
-            <select
-              value={activeClassId}
-              onChange={(e) => setActiveClassId(e.target.value)}
+          <div className="flex items-center gap-3">
+            {availableClasses.length > 1 && (
+              <select
+                value={activeClassId}
+                onChange={(e) => setActiveClassId(e.target.value)}
                 className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
               >
                 {availableClasses.map((cls) => (
@@ -234,10 +329,17 @@ export const Calendar: React.FC = () => {
                 ))}
               </select>
             )}
-            <Button onClick={handleOpenCreate}>
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              Nouvel événement
-            </Button>
+            {canManageEvents && (
+              <Button onClick={handleOpenCreate}>
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                Nouvel événement
+              </Button>
+            )}
+            {canProposeInterview && (
+              <Button variant="outline" onClick={handleOpenInterview}>
+                Proposer un entretien
+              </Button>
+            )}
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input
                 type="checkbox"
@@ -265,10 +367,10 @@ export const Calendar: React.FC = () => {
                       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))
                     }
                   >
-                    ←
+                    ‹
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>
-                    Aujourd&apos;hui
+                    Aujourd'hui
                   </Button>
                   <Button
                     variant="outline"
@@ -277,7 +379,7 @@ export const Calendar: React.FC = () => {
                       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))
                     }
                   >
-                    →
+                    ›
                   </Button>
                 </div>
               </div>
@@ -346,7 +448,21 @@ export const Calendar: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Prochains événements</h3>
               <div className="space-y-3">
                 {sortedEvents.slice(0, 5).map((event) => (
-                  <div key={event.id} className="p-3 bg-gray-50 rounded-md">
+                  <div
+                    key={event.id}
+                    className="p-3 bg-gray-50 rounded-md cursor-pointer hover:bg-gray-100 transition"
+                    onClick={() => {
+                      const eventDate = new Date(event.startDate);
+                      setSelectedDay(eventDate);
+                      setCurrentDate(eventDate);
+                      setShowDayModal(true);
+                      setFocusedEventId(event.id?.toString() || null);
+                      const next = new URLSearchParams(searchParams);
+                      next.set('date', format(eventDate, 'yyyy-MM-dd'));
+                      if (event.id) next.set('eventId', event.id.toString());
+                      setSearchParams(next, { replace: true });
+                    }}
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`px-2 py-1 text-xs font-medium rounded ${getEventTypeColor(event.type)}`}>
                         {getEventTypeLabel(event.type)}
@@ -393,9 +509,12 @@ export const Calendar: React.FC = () => {
 
       <CalendarModals
         showCreate={showCreateModal}
-        onCloseCreate={() => setShowCreateModal(false)}
-        onSubmit={handleCreateEvent}
-        isCreating={isCreating}
+        onCloseCreate={() => {
+          setShowCreateModal(false);
+          setEditingEvent(null);
+        }}
+        onSubmit={handleSubmitEvent}
+        isCreating={isCreating || isUpdating}
         title={title}
         setTitle={setTitle}
         description={description}
@@ -411,7 +530,109 @@ export const Calendar: React.FC = () => {
         showDayModal={showDayModal}
         onCloseDay={() => setShowDayModal(false)}
         dayEvents={dayEvents}
+        focusedEventId={focusedEventId}
+        canManageEvents={canManageEvents}
+        isEditing={!!editingEvent}
+        onEditEvent={(event: any) => {
+          setEditingEvent(event);
+          setActiveClassId(event.classId?.toString() || activeClassId);
+          setTitle(event.title || '');
+          setDescription(event.description || '');
+          setEventType(event.type || 'MEETING');
+          setDate(format(new Date(event.startDate), 'yyyy-MM-dd'));
+          setStartTime(format(new Date(event.startDate), 'HH:mm'));
+          setEndTime(format(new Date(event.endDate), 'HH:mm'));
+          setShowCreateModal(true);
+        }}
+        onDeleteEvent={(event: any) => {
+          if (!event?.id) return;
+          if (!window.confirm('Supprimer cet événement ?')) return;
+          setActiveClassId(event.classId?.toString() || activeClassId);
+          setEditingEvent(event);
+          deleteEvent(event.id.toString(), {
+            onSuccess: () => {
+              toast.success('Événement supprimé');
+              queryClient.invalidateQueries({ queryKey: ['events', activeClassId] });
+            },
+            onError: (err: any) => {
+              const message = err.response?.data?.message || 'Erreur lors de la suppression';
+              toast.error(message);
+            },
+          });
+        }}
+        isDeleting={isDeleting}
       />
+
+      <Modal
+        isOpen={showInterviewModal}
+        onClose={() => setShowInterviewModal(false)}
+        title="Proposer un entretien"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <input
+                type="date"
+                value={interviewDate}
+                onChange={(e) => setInterviewDate(e.target.value)}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Heure</label>
+              <input
+                type="time"
+                value={interviewTime}
+                onChange={(e) => setInterviewTime(e.target.value)}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Lieu (optionnel)</label>
+            <input
+              type="text"
+              value={interviewLocation}
+              onChange={(e) => setInterviewLocation(e.target.value)}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowInterviewModal(false)}>
+              Annuler
+            </Button>
+            <Button
+              isLoading={creatingInterview}
+              onClick={() => {
+                if (!user?.id) return;
+                const scheduledAt = `${interviewDate}T${interviewTime}:00`;
+                createInterview(
+                  {
+                    studentId: user.id,
+                    scheduledAt,
+                    location: interviewLocation || undefined,
+                    status: 'PROPOSED',
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.success('Proposition envoyée');
+                      setShowInterviewModal(false);
+                    },
+                    onError: (err: any) => {
+                      const message = err.response?.data?.message || 'Erreur lors de la proposition';
+                      toast.error(message);
+                    },
+                  }
+                );
+              }}
+            >
+              Envoyer
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };
@@ -436,6 +657,12 @@ type CalendarModalsProps = {
   showDayModal: boolean;
   onCloseDay: () => void;
   dayEvents: any[];
+  focusedEventId: string | null;
+  canManageEvents: boolean;
+  isEditing: boolean;
+  onEditEvent: (event: any) => void;
+  onDeleteEvent: (event: any) => void;
+  isDeleting: boolean;
 };
 
 const CalendarModals: React.FC<CalendarModalsProps> = ({
@@ -458,9 +685,15 @@ const CalendarModals: React.FC<CalendarModalsProps> = ({
   showDayModal,
   onCloseDay,
   dayEvents,
+  focusedEventId,
+  canManageEvents,
+  onEditEvent,
+  onDeleteEvent,
+  isDeleting,
+  isEditing,
 }) => (
   <>
-    <Modal isOpen={showCreate} onClose={onCloseCreate} title="Nouvel événement" size="md">
+    <Modal isOpen={showCreate} onClose={onCloseCreate} title={isEditing ? 'Modifier événement' : 'Nouvel événement'} size="md">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Titre</label>
@@ -529,13 +762,30 @@ const CalendarModals: React.FC<CalendarModalsProps> = ({
         <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
           <div className="flex items-center justify-between mb-1">
             <span className="font-semibold">Aperçu</span>
-            <span className={`px-2 py-1 text-xs font-medium rounded ${eventType === 'EXAM' ? 'bg-red-100 text-red-700' : eventType === 'COURSE' ? 'bg-blue-100 text-blue-700' : eventType === 'DEADLINE' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
-              {eventType === 'EXAM' ? 'Examen' : eventType === 'COURSE' ? 'Cours' : eventType === 'DEADLINE' ? 'Échéance' : 'Réunion'}
+            <span
+              className={`px-2 py-1 text-xs font-medium rounded ${
+                eventType === 'EXAM'
+                  ? 'bg-red-100 text-red-700'
+                  : eventType === 'COURSE'
+                    ? 'bg-blue-100 text-blue-700'
+                    : eventType === 'DEADLINE'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-green-100 text-green-700'
+              }`}
+            >
+              {eventType === 'EXAM'
+                ? 'Examen'
+                : eventType === 'COURSE'
+                  ? 'Cours'
+                  : eventType === 'DEADLINE'
+                    ? 'Échéance'
+                    : 'Réunion'}
             </span>
           </div>
           <p className="font-medium">{title || 'Titre à définir'}</p>
           <p className="text-xs text-gray-600">
-            {date ? format(new Date(`${date}T00:00:00`), 'dd/MM/yyyy', { locale: fr }) : 'Date non définie'} • {startTime || '--:--'} - {endTime || '--:--'}
+            {date ? format(new Date(`${date}T00:00:00`), 'dd/MM/yyyy', { locale: fr }) : 'Date non définie'} •{' '}
+            {startTime || '--:--'} - {endTime || '--:--'}
           </p>
           {description && <p className="mt-1 line-clamp-2">{description}</p>}
         </div>
@@ -544,7 +794,7 @@ const CalendarModals: React.FC<CalendarModalsProps> = ({
             Annuler
           </Button>
           <Button onClick={onSubmit} isLoading={isCreating}>
-            Créer
+            {isEditing ? 'Mettre à jour' : 'Créer'}
           </Button>
         </div>
       </div>
@@ -556,7 +806,10 @@ const CalendarModals: React.FC<CalendarModalsProps> = ({
       ) : (
         <div className="space-y-3">
           {dayEvents.map((event) => (
-            <Card key={event.id}>
+            <Card
+              key={event.id}
+              className={focusedEventId && focusedEventId === event.id?.toString() ? 'border-blue-400 shadow-sm' : ''}
+            >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-semibold text-gray-800">{event.title}</span>
                 <span className="text-xs text-gray-500">
@@ -565,6 +818,16 @@ const CalendarModals: React.FC<CalendarModalsProps> = ({
               </div>
               <div className="text-sm text-gray-700 mb-1">{event.description || 'Pas de description'}</div>
               <div className="text-xs text-gray-500">{getEventTypeLabel(event.type)}</div>
+              {canManageEvents && !event.id?.toString().startsWith('INT-') && (
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => onEditEvent(event)}>
+                    Modifier
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={isDeleting} onClick={() => onDeleteEvent(event)}>
+                    Supprimer
+                  </Button>
+                </div>
+              )}
             </Card>
           ))}
         </div>
