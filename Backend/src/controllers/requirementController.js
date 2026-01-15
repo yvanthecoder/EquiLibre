@@ -1,6 +1,9 @@
 const Requirement = require('../models/Requirement');
 const RequirementSubmission = require('../models/RequirementSubmission');
+const Class = require('../models/Class');
+const Assignment = require('../models/Assignment');
 const { ERROR_MESSAGES, USER_ROLES, REQUIREMENT_STATUS } = require('../config/constants');
+const { createNotification } = require('../utils/notifications');
 
 // Helper pour normaliser les requirements vers le frontend
 const mapRequirement = (reqRow) => {
@@ -50,8 +53,8 @@ const getAllRequirements = async (req, res) => {
 
         if (classId) {
             requirements = await Requirement.findByClassId(parseInt(classId, 10));
-        } else if (userRole === USER_ROLES.ADMIN) {
-            requirements = await Requirement.findByUserId(userId);
+        } else if (userRole === USER_ROLES.JURY || userRole === USER_ROLES.INTERVENANT) {
+            requirements = await Requirement.findByJuryUserId(userId);
         } else {
             requirements = await Requirement.findByUserId(userId);
         }
@@ -109,6 +112,21 @@ const createRequirement = async (req, res) => {
             createdBy: req.user.userId,
             dueDate
         });
+
+        try {
+            const members = await Class.getMembers(parseInt(classId, 10));
+            for (const member of members) {
+                await createNotification({
+                    userId: member.id,
+                    title: 'Nouvelle exigence',
+                    message: `Une nouvelle exigence a été créée: ${title}`,
+                    type: 'INFO',
+                    link: `/requirements/${requirement.id}`
+                });
+            }
+        } catch (notifyError) {
+            console.warn('Notification création requirement échouée:', notifyError.message);
+        }
 
         return res.status(201).json(mapRequirement(requirement));
     } catch (error) {
@@ -258,6 +276,40 @@ const submitRequirement = async (req, res) => {
             mimeType: file.mimetype
         });
 
+        try {
+            const requirement = await Requirement.findById(requirementId);
+            const recipients = new Set();
+
+            if (requirement?.classId) {
+                const classData = await Class.findById(requirement.classId);
+                if (classData?.tuteur_id) {
+                    recipients.add(classData.tuteur_id);
+                }
+            }
+
+            const assignment = await Assignment.findByStudentId(userId);
+            if (assignment?.tuteur_id) recipients.add(assignment.tuteur_id);
+            if (assignment?.maitre_id) recipients.add(assignment.maitre_id);
+
+            if (requirement?.createdBy && requirement.createdBy !== userId) {
+                recipients.add(requirement.createdBy);
+            }
+
+            for (const recipientId of recipients) {
+                await createNotification({
+                    userId: recipientId,
+                    title: 'Nouvelle soumission',
+                    message: `Une soumission est en attente pour ${requirement.title}`,
+                    type: 'INFO',
+                    link: `/requirements/${requirementId}`
+                });
+            }
+        } catch (notifyError) {
+            console.warn('Notification soumission requirement ?chou?e:', notifyError.message);
+        }
+
+        }
+
         return res.status(201).json(mapSubmission(submission));
     } catch (error) {
         console.error('Erreur lors de l\'envoi de la soumission:', error);
@@ -282,6 +334,19 @@ const updateSubmissionStatus = async (req, res) => {
         }
 
         const updated = await RequirementSubmission.updateStatus(submissionId, status, feedback);
+        if (updated?.userId) {
+            try {
+                await createNotification({
+                    userId: updated.userId,
+                    title: 'Statut de soumission',
+                    message: status === REQUIREMENT_STATUS.VALIDATED ? 'Votre document a été validé.' : 'Votre document a été rejeté.',
+                    type: status === REQUIREMENT_STATUS.VALIDATED ? 'SUCCESS' : 'WARNING',
+                    link: `/requirements/${updated.requirementId}`
+                });
+            } catch (notifyError) {
+                console.warn('Notification validation requirement échouée:', notifyError.message);
+            }
+        }
         return res.json(mapSubmission(updated));
     } catch (error) {
         console.error('Erreur lors de la mise A� jour de la soumission:', error);

@@ -26,19 +26,14 @@ const AdminReports: React.FC = () => {
     return grouped;
   }, [assignments]);
 
-  const exportCsv = () => {
-    const rows = [['Classe', 'Assignations']];
-    (classes || []).forEach((cls: any) => {
-      rows.push([cls.name || cls.id, (byClass[cls.id] || 0).toString()]);
-    });
-    const csv = rows.map((r) => r.join(';')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+  const downloadReport = (format: 'csv' | 'pdf' | 'xlsx') => {
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+    const apiBase = base.endsWith('/api') ? base : `${base}/api`;
+    const url = `${apiBase}/reports/assignments?format=${format}`;
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'rapport-assignations.csv';
+    link.download = `rapport-assignations.${format}`;
     link.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -51,7 +46,11 @@ const AdminReports: React.FC = () => {
             <p className="text-gray-600">Stats rapides par classe (assignations)</p>
           </div>
         </div>
-        <Button onClick={exportCsv}>Exporter CSV</Button>
+        <div className="flex gap-2">
+          <Button onClick={() => downloadReport('csv')}>Exporter CSV</Button>
+          <Button variant="outline" onClick={() => downloadReport('xlsx')}>Exporter Excel</Button>
+          <Button variant="outline" onClick={() => downloadReport('pdf')}>Exporter PDF</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

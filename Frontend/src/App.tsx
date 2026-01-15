@@ -21,6 +21,10 @@ import { Calendar } from './pages/Calendar';
 import { Messages } from './pages/Messages';
 import { MessageThread } from './pages/MessageThread';
 import Directory from './pages/Directory';
+import { Journals } from './pages/Journals';
+import { Interviews } from './pages/Interviews';
+import { Soutenances } from './pages/Soutenances';
+import { Evaluations } from './pages/Evaluations';
 
 // Admin Pages
 import { AdminRequirements } from './pages/admin/AdminRequirements';
@@ -104,6 +108,54 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <ClassPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Journals */}
+            <Route
+              path="/journals"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Journals />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Interviews */}
+            <Route
+              path="/interviews"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Interviews />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Soutenances */}
+            <Route
+              path="/soutenances"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Soutenances />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Evaluations */}
+            <Route
+              path="/evaluations"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Evaluations />
                   </Layout>
                 </ProtectedRoute>
               }

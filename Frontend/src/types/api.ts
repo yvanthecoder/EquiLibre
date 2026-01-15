@@ -30,6 +30,82 @@ export interface Event {
   type: 'COURSE' | 'EXAM' | 'DEADLINE' | 'MEETING';
 }
 
+export interface Journal {
+  id: string;
+  userId: string;
+  periodStart?: string;
+  periodEnd?: string;
+  content?: string;
+  status: 'DRAFT' | 'IN_PROGRESS' | 'SUBMITTED' | 'VALIDATED' | 'ARCHIVED';
+  createdAt: string;
+  updatedAt: string;
+  validatedBy?: string;
+  validatedAt?: string;
+  validationComment?: string;
+}
+
+export interface Interview {
+  id: string;
+  studentId: string;
+  tuteurId?: string;
+  maitreId?: string;
+  scheduledAt: string;
+  location?: string;
+  status: 'PROPOSED' | 'PLANNED' | 'CONFIRMED' | 'COMPLETED' | 'ARCHIVED';
+  summary?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Soutenance {
+  id: string;
+  classId: string;
+  title: string;
+  scheduledAt: string;
+  location?: string;
+  status: 'PLANNED' | 'CONFIRMED' | 'IN_PROGRESS' | 'EVALUATED' | 'ARCHIVED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EvaluationGrid {
+  id: string;
+  name: string;
+  description?: string;
+  criteria?: EvaluationCriteria[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface EvaluationCriteria {
+  id: string;
+  gridId: string;
+  label: string;
+  maxScore: number;
+  weight: number;
+}
+
+export interface Evaluation {
+  id: string;
+  studentId: string;
+  evaluatorId: string;
+  contextType: 'JOURNAL' | 'REQUIREMENT' | 'SOUTENANCE';
+  contextId: string;
+  gridId?: string;
+  overallScore?: number;
+  comment?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EvaluationScore {
+  id: string;
+  evaluationId: string;
+  criteriaId: string;
+  score: number;
+  comment?: string;
+}
+
 export interface Thread {
   id: string;
   title: string;
@@ -127,7 +203,14 @@ export interface UpdateUserRequest {
   password?: string;
 }
 
-export type UserRole = 'ALTERNANT' | 'ETUDIANT_CLASSIQUE' | 'TUTEUR_ECOLE' | 'MAITRE_APP' | 'ADMIN';
+export type UserRole =
+  | 'ALTERNANT'
+  | 'ETUDIANT_CLASSIQUE'
+  | 'TUTEUR_ECOLE'
+  | 'MAITRE_APP'
+  | 'ADMIN'
+  | 'JURY'
+  | 'INTERVENANT';
 
 export interface User {
   id: string;

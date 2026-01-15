@@ -17,7 +17,11 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Profil', href: '/profile', icon: UserIcon },
   { name: 'Ma Classe', href: '/class', icon: UserGroupIcon },
+  { name: 'Journaux', href: '/journals', icon: DocumentTextIcon },
   { name: 'Exigences', href: '/requirements', icon: DocumentTextIcon },
+  { name: 'Entretiens', href: '/interviews', icon: CalendarIcon },
+  { name: 'Soutenances', href: '/soutenances', icon: CalendarIcon },
+  { name: 'Évaluations', href: '/evaluations', icon: DocumentTextIcon },
   { name: 'Mes Fichiers', href: '/files', icon: FolderIcon },
   { name: 'Calendrier', href: '/calendar', icon: CalendarIcon },
   { name: 'Messages', href: '/messages', icon: ChatBubbleLeftRightIcon },
@@ -25,7 +29,12 @@ const navigation = [
 ];
 
 const adminNavigation = [
+  { name: 'Gestion Classes', href: '/admin/classes', icon: UserGroupIcon },
+  { name: 'Assignations', href: '/admin/assignments', icon: UserGroupIcon },
+  { name: 'Exigences', href: '/admin/requirements', icon: DocumentTextIcon },
   { name: 'Gestion Calendrier', href: '/admin/calendar', icon: CalendarIcon },
+  { name: 'Reporting', href: '/admin/reports', icon: DocumentTextIcon },
+  { name: 'Logs', href: '/admin/logs', icon: DocumentTextIcon },
   { name: 'Gestion Utilisateurs', href: '/admin/users', icon: UserIcon },
 ];
 
@@ -34,7 +43,10 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
 
   const isAdmin = user?.role === 'ADMIN';
+  const isTutor = user?.role === 'TUTEUR_ECOLE';
   const isMaitre = user?.role === 'MAITRE_APP';
+  const isJury = user?.role === 'JURY';
+  const isIntervenant = user?.role === 'INTERVENANT';
   const isStudent = user?.role === 'ALTERNANT' || user?.role === 'ETUDIANT_CLASSIQUE';
 
   return (
@@ -52,10 +64,16 @@ export const Sidebar: React.FC = () => {
             if ((isAdmin || isMaitre) && item.name === 'Ma Classe') return false;
             // Admin ne voit pas exigence/fichiers côté user
             if (isAdmin && (item.name === 'Exigences' || item.name === 'Mes Fichiers')) return false;
-            // Maître n'a pas besoin d'exigences/fichiers ici
-            if (isMaitre && (item.name === 'Exigences' || item.name === 'Mes Fichiers')) return false;
             // Autres rôles : si pas étudiant/alternant, cacher Ma Classe
             if (!isStudent && item.name === 'Ma Classe') return false;
+            // Journaux visibles pour étudiants et encadrants
+            if (item.name === 'Journaux' && !(isStudent || isTutor || isMaitre || isAdmin)) return false;
+            // Entretiens visibles pour étudiants + encadrants
+            if (item.name === 'Entretiens' && !(isStudent || isTutor || isMaitre || isAdmin)) return false;
+            // Soutenances visibles pour tous les rôles
+            if (item.name === 'Soutenances' && !(isStudent || isTutor || isMaitre || isAdmin || isJury || isIntervenant)) return false;
+            // Evaluations visibles pour encadrants, jury/intervenant et étudiants
+            if (item.name === 'Evaluations' && !(isStudent || isTutor || isMaitre || isAdmin || isJury || isIntervenant)) return false;
             return true;
           })
           .map((item) => {

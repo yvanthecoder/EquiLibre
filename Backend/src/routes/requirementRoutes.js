@@ -16,7 +16,7 @@ const {
     updateSubmissionStatus
 } = require('../controllers/requirementController');
 const { authenticate } = require('../middlewares/auth');
-const { requireTuteurOrAdmin, requireTuteurMaitreOrAdmin, requirePermission } = require('../middlewares/roleCheck');
+const { requireTuteurOrAdmin, requireEvaluator, requirePermission } = require('../middlewares/roleCheck');
 
 // Configuration du stockage des fichiers
 const uploadDir = path.join(__dirname, '../../uploads/requirements');
@@ -44,7 +44,7 @@ router.patch('/:id', authenticate, requirePermission('canEditRequirements'), upd
 router.post('/:id/validate', authenticate, requirePermission('canValidateRequirements'), validateRequirement);
 
 router.post('/:id/submissions', authenticate, upload.single('file'), submitRequirement);
-router.patch('/:id/submissions/:submissionId', authenticate, requireTuteurMaitreOrAdmin, updateSubmissionStatus);
+router.patch('/:id/submissions/:submissionId', authenticate, requireEvaluator, updateSubmissionStatus);
 
 router.delete('/:id', authenticate, requirePermission('canDeleteRequirements'), deleteRequirement);
 

@@ -1,4 +1,5 @@
 const { USER_ROLES, ERROR_MESSAGES, ROLE_PERMISSIONS } = require('../config/constants');
+const { query } = require('../config/database');
 
 // Middleware pour vérifier les rôles autorisés
 const requireRole = (...allowedRoles) => {
@@ -28,6 +29,13 @@ const requireAdmin = requireRole(USER_ROLES.ADMIN);
 // Middleware pour vérifier si l'utilisateur est tuteur ou admin
 const requireTuteurOrAdmin = requireRole(USER_ROLES.TUTEUR_ECOLE, USER_ROLES.ADMIN);
 const requireTuteurMaitreOrAdmin = requireRole(USER_ROLES.TUTEUR_ECOLE, USER_ROLES.MAITRE_APP, USER_ROLES.ADMIN);
+const requireEvaluator = requireRole(
+    USER_ROLES.TUTEUR_ECOLE,
+    USER_ROLES.MAITRE_APP,
+    USER_ROLES.ADMIN,
+    USER_ROLES.JURY,
+    USER_ROLES.INTERVENANT
+);
 
 // Middleware pour vérifier si l'utilisateur est étudiant (alternant ou classique)
 const requireStudent = requireRole(USER_ROLES.ALTERNANT, USER_ROLES.ETUDIANT_CLASSIQUE);
@@ -120,6 +128,21 @@ const requireClassAccess = async (req, res, next) => {
             }
         }
 
+        // Jury / Intervenant : accès si assigné à une soutenance de la classe
+        if (userRole === USER_ROLES.JURY || userRole === USER_ROLES.INTERVENANT) {
+            const result = await query(
+                `SELECT 1
+                 FROM soutenance_jury sj
+                 JOIN soutenances s ON s.id = sj.soutenance_id
+                 WHERE sj.user_id = $1 AND s.class_id = $2
+                 LIMIT 1`,
+                [userId, classId]
+            );
+            if (result.rows.length > 0) {
+                return next();
+            }
+        }
+
         // Étudiant : vérifier qu'il est membre de la classe
         const userClasses = await Class.findByUserId(userId);
         const hasAccess = userClasses.some(c => c.id === classId);
@@ -148,6 +171,7 @@ module.exports = {
     requireAdmin,
     requireTuteurOrAdmin,
     requireTuteurMaitreOrAdmin,
+    requireEvaluator,
     requireStudent,
     requirePermission,
     requireOwnerOrAdmin,

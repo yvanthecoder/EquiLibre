@@ -8,7 +8,9 @@ export type UserRole =
   | 'ETUDIANT_CLASSIQUE'
   | 'MAITRE_APP'
   | 'TUTEUR_ECOLE'
-  | 'ADMIN';
+  | 'ADMIN'
+  | 'JURY'
+  | 'INTERVENANT';
 
 // Interface User
 export interface User {
