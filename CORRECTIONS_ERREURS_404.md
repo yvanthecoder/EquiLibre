@@ -76,6 +76,8 @@ date-fns.js:1827 Uncaught RangeError: Invalid time value
 
 **Solution appliquée:**
 
+
+
 ```typescript
 // AVANT (ligne 104)
 {format(new Date(user.createdAt), 'dd MMMM yyyy', { locale: fr })}
