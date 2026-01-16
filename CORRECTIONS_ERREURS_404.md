@@ -41,6 +41,10 @@
 
 ####   Routes créées: `Backend/src/routes/notificationRoutes.js`
 
+
+
+
+
 **Endpoints disponibles:**
 ```
 GET    /api/notifications           - Lister les notifications
