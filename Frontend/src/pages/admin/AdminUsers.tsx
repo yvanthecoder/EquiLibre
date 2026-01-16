@@ -159,7 +159,7 @@ export const AdminUsers: React.FC = () => {
     },
     {
       header: 'Classe',
-      accessor: (row: any) => classLabel[row.classId] || '—',
+      accessor: (row: any) => (row.role === 'TUTEUR_ECOLE' ? '—' : classLabel[row.classId] || '—'),
     },
     {
       header: 'Créé le',
@@ -191,21 +191,6 @@ export const AdminUsers: React.FC = () => {
             }}
           >
             <PencilIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              const newPass = Math.random().toString(36).slice(2, 10);
-              updateUser(
-                { password: newPass },
-                {
-                  onSuccess: () => toast.success(`Nouveau mot de passe: ${newPass}`),
-                }
-              );
-            }}
-          >
-            Réinitialiser
           </Button>
           <Button
             size="sm"

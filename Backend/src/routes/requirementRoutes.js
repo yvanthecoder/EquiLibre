@@ -12,6 +12,7 @@ const {
     deleteRequirement,
     getRequirementStats,
     getRequirementSubmissions,
+    downloadSubmission,
     submitRequirement,
     updateSubmissionStatus
 } = require('../controllers/requirementController');
@@ -38,6 +39,7 @@ router.get('/', authenticate, getAllRequirements);
 router.get('/stats/:classId', authenticate, requireTuteurOrAdmin, getRequirementStats);
 router.get('/:id', authenticate, getRequirementById);
 router.get('/:id/submissions', authenticate, getRequirementSubmissions);
+router.get('/:id/submissions/:submissionId/download', authenticate, downloadSubmission);
 
 router.post('/', authenticate, requirePermission('canCreateRequirements'), createRequirement);
 router.patch('/:id', authenticate, requirePermission('canEditRequirements'), updateRequirement);

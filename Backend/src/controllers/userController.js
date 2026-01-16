@@ -20,6 +20,82 @@ const mapUser = (user) => ({
     isVerified: user.is_verified
 });
 
+// Créer un utilisateur (Admin)
+const createUser = async (req, res) => {
+    try {
+        const {
+            email,
+            password,
+            firstName,
+            lastName,
+            firstname,
+            lastname,
+            role,
+            company,
+            phone,
+            jobTitle,
+            job_title,
+            classId
+        } = req.body;
+
+        const resolvedFirstName = firstName || firstname;
+        const resolvedLastName = lastName || lastname;
+
+        if (!email || !password || !resolvedFirstName || !resolvedLastName || !role) {
+            return res.status(400).json({
+                success: false,
+                message: ERROR_MESSAGES.BAD_REQUEST,
+                detail: 'Tous les champs obligatoires doivent etre remplis'
+            });
+        }
+
+        const existingUser = await User.findByEmail(email);
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: ERROR_MESSAGES.EMAIL_EXISTS
+            });
+        }
+
+        let parsedClassId = null;
+        if (classId !== undefined && classId !== null && `${classId}`.trim() !== '') {
+            parsedClassId = parseInt(classId, 10);
+            if (Number.isNaN(parsedClassId)) {
+                parsedClassId = null;
+            }
+        }
+
+        const user = await User.create({
+            email,
+            password,
+            firstname: resolvedFirstName,
+            lastname: resolvedLastName,
+            role,
+            company,
+            phone,
+            job_title: jobTitle || job_title,
+            class_id: parsedClassId
+        });
+
+        if (parsedClassId) {
+            try {
+                await ClassModel.addMember(parsedClassId, user.id);
+            } catch (err) {
+                console.warn('Impossible d\'associer la classe lors de la creation:', err.message);
+            }
+        }
+
+        return res.status(201).json(mapUser(user));
+    } catch (error) {
+        console.error('Erreur lors de la creation de l\'utilisateur:', error);
+        return res.status(500).json({
+            success: false,
+            message: ERROR_MESSAGES.SERVER_ERROR,
+            detail: error.message
+        });
+    }
+};
+
 // Obtenir tous les utilisateurs (Admin)
 const getAllUsers = async (req, res) => {
     try {
@@ -147,6 +223,7 @@ const deleteUser = async (req, res) => {
 };
 
 module.exports = {
+    createUser,
     getAllUsers,
     getUserById,
     updateUser,

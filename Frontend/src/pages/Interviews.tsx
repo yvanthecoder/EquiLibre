@@ -21,6 +21,7 @@ export const Interviews: React.FC = () => {
   const { user } = useAuth();
   const { data: interviews = [] } = useInterviews();
   const canCreate = ['ADMIN', 'TUTEUR_ECOLE', 'MAITRE_APP', 'INTERVENANT'].includes(user?.role || '');
+  const canPropose = ['ALTERNANT', 'ETUDIANT_CLASSIQUE'].includes(user?.role || '');
   const isAdmin = user?.role === 'ADMIN';
   const { users = [] } = useUsers(canCreate && isAdmin);
   const { classes = [] } = useClassesList();
@@ -97,19 +98,19 @@ export const Interviews: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Entretiens semestriels</h1>
           <p className="text-gray-600">Planification et suivi des entretiens</p>
         </div>
-        {canCreate && (
+        {(canCreate || canPropose) && (
           <Button
             onClick={() => {
               setEditingInterview(null);
-              setStudentId('');
+              setStudentId(canPropose ? user?.id?.toString() || '' : '');
               setScheduledAt('');
               setLocation('');
-              setStatus('PLANNED');
+              setStatus(canPropose ? 'PROPOSED' : 'PLANNED');
               setSummary('');
               setIsModalOpen(true);
             }}
           >
-            Planifier
+            {canPropose ? 'Proposer' : 'Planifier'}
           </Button>
         )}
       </div>
@@ -138,7 +139,13 @@ export const Interviews: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingInterview ? 'Modifier un entretien' : 'Planifier un entretien'}
+        title={
+          editingInterview
+            ? 'Modifier un entretien'
+            : canPropose
+            ? 'Proposer un entretien'
+            : 'Planifier un entretien'
+        }
       >
         <div className="space-y-4">
           {!isAdmin && canCreate && (
@@ -158,24 +165,26 @@ export const Interviews: React.FC = () => {
               </select>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Étudiant</label>
-            <select
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              disabled={!isAdmin && canCreate && !selectedClassId}
-            >
-              <option value="">
-                {isAdmin || selectedClassId ? 'Sélectionner' : 'Sélectionner une classe'}
-              </option>
-              {studentOptions.map((u: any) => (
-                <option key={u.id} value={u.id}>
-                  {u.firstName} {u.lastName}
+          {!canPropose && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Étudiant</label>
+              <select
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                disabled={!isAdmin && canCreate && !selectedClassId}
+              >
+                <option value="">
+                  {isAdmin || selectedClassId ? 'Sélectionner' : 'Sélectionner une classe'}
                 </option>
-              ))}
-            </select>
-          </div>
+                {studentOptions.map((u: any) => (
+                  <option key={u.id} value={u.id}>
+                    {u.firstName} {u.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
             <input
@@ -194,29 +203,33 @@ export const Interviews: React.FC = () => {
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
-              <option value="PROPOSED">Proposé</option>
-              <option value="PLANNED">Planifié</option>
-              <option value="CONFIRMED">Confirmé</option>
-              <option value="COMPLETED">Terminé</option>
-              <option value="ARCHIVED">Archivé</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Compte rendu</label>
-            <textarea
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              rows={3}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
+          {!canPropose && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as any)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="PROPOSED">Proposé</option>
+                  <option value="PLANNED">Planifié</option>
+                  <option value="CONFIRMED">Confirmé</option>
+                  <option value="COMPLETED">Terminé</option>
+                  <option value="ARCHIVED">Archivé</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Compte rendu</label>
+                <textarea
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>
               Annuler
@@ -224,14 +237,20 @@ export const Interviews: React.FC = () => {
             <Button
               isLoading={creating || updating}
               onClick={() => {
-                if (!studentId || !scheduledAt) return;
+                if (!(canPropose ? user?.id : studentId) || !scheduledAt) return;
                 if (editingInterview) {
                   updateInterview({
                     id: editingInterview.id,
                     payload: { studentId, scheduledAt, location, status, summary },
                   });
                 } else {
-                  createInterview({ studentId, scheduledAt, location, status, summary });
+                  createInterview({
+                    studentId: canPropose ? user?.id?.toString() || '' : studentId,
+                    scheduledAt,
+                    location,
+                    status: canPropose ? 'PROPOSED' : status,
+                    summary: canPropose ? '' : summary,
+                  });
                 }
                 setIsModalOpen(false);
                 setEditingInterview(null);

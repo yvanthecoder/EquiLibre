@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
@@ -10,11 +11,12 @@ import ChangePasswordModal from '../components/Profile/ChangePasswordModal';
 import { classService } from '../services/api.service';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/UI/Modal';
-import { useNotifications } from '../hooks/useNotifications';
+import { useMarkNotificationRead, useNotifications } from '../hooks/useNotifications';
 import { useRequirements } from '../hooks/useRequirements';
 
 export const Profile: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { requirements } = useRequirements(user?.classId);
   const [showEdit, setShowEdit] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +29,7 @@ export const Profile: React.FC = () => {
   });
   const [emailNotif, setEmailNotif] = useState(true);
   const { notifications } = useNotifications();
+  const { markAsRead } = useMarkNotificationRead();
 
   if (!user) {
     return (
@@ -78,6 +81,16 @@ export const Profile: React.FC = () => {
       localStorage.removeItem('open_notifications');
     }
   }, []);
+
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+    if (notification.link) {
+      setShowNotifications(false);
+      navigate(notification.link);
+    }
+  };
 
   const submissionsByMe = (() => {
     if (!requirements || !user) return 0;
@@ -245,16 +258,30 @@ export const Profile: React.FC = () => {
         <div className="space-y-3 max-h-[60vh] overflow-y-auto">
           {notifications && notifications.length > 0 ? (
             notifications.map((n) => (
-              <Card key={n.id}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-gray-900">{n.title}</span>
-                  <span className="text-xs text-gray-500">
-                    {format(new Date(n.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-700">{n.message}</p>
-                <div className="mt-1 text-xs text-gray-500">{n.type}</div>
-              </Card>
+              <div
+                key={n.id}
+                role="button"
+                tabIndex={0}
+                className="cursor-pointer"
+                onClick={() => handleNotificationClick(n)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleNotificationClick(n);
+                  }
+                }}
+              >
+                <Card className="hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-gray-900">{n.title}</span>
+                    <span className="text-xs text-gray-500">
+                      {format(new Date(n.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700">{n.message}</p>
+                  <div className="mt-1 text-xs text-gray-500">{n.type}</div>
+                </Card>
+              </div>
             ))
           ) : (
             <p className="text-gray-600">Aucune notification.</p>

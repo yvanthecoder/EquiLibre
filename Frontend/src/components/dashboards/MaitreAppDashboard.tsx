@@ -42,15 +42,33 @@ export const MaitreAppDashboard: React.FC = () => {
       try {
         const shared = await fileService.getSharedFiles();
         const needSign = (shared || []).filter((f: any) => f.requiresSignature);
-        setPendingFiles(needSign);
+        if (!user?.id || needSign.length === 0) {
+          setPendingFiles(needSign);
+          return;
+        }
+        const userId = Number(user.id);
+        const unsigned = await Promise.all(
+          needSign.map(async (file: any) => {
+            try {
+              const signatures = await fileService.getSignatures(file.id.toString());
+              const signedByUser = signatures.some((sig: any) => Number(sig.userId) === userId);
+              return signedByUser ? null : file;
+            } catch (error) {
+              console.error('Erreur chargement signatures', error);
+              return file;
+            }
+          })
+        );
+        setPendingFiles(unsigned.filter(Boolean));
       } catch (err) {
         console.error('Erreur chargement fichiers partagés', err);
       }
     };
     fetchFiles();
-  }, []);
+  }, [user?.id]);
 
   const unread = useMemo(() => notifications?.filter((n) => !n.read).length || 0, [notifications]);
+
 
   return (
     <div className="space-y-6">
@@ -165,7 +183,10 @@ export const MaitreAppDashboard: React.FC = () => {
                     onClick={() =>
                       fileService
                         .signFile(file.id.toString())
-                        .then(() => toast.success('Signé'))
+                        .then(() => {
+                          toast.success('Signé');
+                          setPendingFiles((current) => current.filter((pending) => pending.id !== file.id));
+                        })
                         .catch(() => toast.error('Erreur signature'))
                     }
                   >

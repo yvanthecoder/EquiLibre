@@ -1,7 +1,6 @@
 const Soutenance = require('../models/Soutenance');
 const { ERROR_MESSAGES, USER_ROLES } = require('../config/constants');
 const { createNotification } = require('../utils/notifications');
-const { query } = require('../config/database');
 
 const getSoutenances = async (req, res) => {
     try {
@@ -9,11 +8,13 @@ const getSoutenances = async (req, res) => {
         let data = [];
         if (role === USER_ROLES.ADMIN) {
             const classId = req.query.classId ? parseInt(req.query.classId, 10) : null;
-            if (classId) {
+            const studentId = req.query.studentId ? parseInt(req.query.studentId, 10) : null;
+            if (studentId) {
+                data = await Soutenance.findByStudentId(studentId);
+            } else if (classId) {
                 data = await Soutenance.findByClassId(classId);
             } else {
-                // Admin doit préciser classId pour éviter de charger toutes les classes
-                data = [];
+                data = await Soutenance.findAll();
             }
         } else {
             data = await Soutenance.findForUser(req.user.userId);
@@ -41,12 +42,12 @@ const getSoutenanceById = async (req, res) => {
 
 const createSoutenance = async (req, res) => {
     try {
-        const { classId, title, scheduledAt, location, status } = req.body;
-        if (!classId || !title || !scheduledAt) {
+        const { studentId, title, scheduledAt, location, status } = req.body;
+        if (!studentId || !title || !scheduledAt) {
             return res.status(400).json({ success: false, message: ERROR_MESSAGES.BAD_REQUEST });
         }
         const soutenance = await Soutenance.create({
-            classId: parseInt(classId, 10),
+            studentId: parseInt(studentId, 10),
             title,
             scheduledAt,
             location,
@@ -54,16 +55,13 @@ const createSoutenance = async (req, res) => {
             createdBy: req.user.userId
         });
         try {
-            const members = await query('SELECT user_id FROM class_members WHERE class_id = $1', [classId]);
-            for (const row of members.rows) {
-                await createNotification({
-                    userId: row.user_id,
-                    title: 'Soutenance planifiée',
-                    message: `Nouvelle soutenance: ${title}`,
-                    type: 'INFO',
-                    link: '/soutenances'
-                });
-            }
+            await createNotification({
+                userId: soutenance.studentId,
+                title: 'Soutenance planifiée',
+                message: `Soutenance prévue: ${title}`,
+                type: 'INFO',
+                link: '/soutenances'
+            });
         } catch (notifyError) {
             console.warn('Notification soutenance échouée:', notifyError.message);
         }
@@ -77,14 +75,46 @@ const createSoutenance = async (req, res) => {
 const updateSoutenance = async (req, res) => {
     try {
         const id = parseInt(req.params.id, 10);
+        const existing = await Soutenance.findById(id);
+        if (!existing) {
+            return res.status(404).json({ success: false, message: ERROR_MESSAGES.NOT_FOUND });
+        }
         const updates = {};
-        if (req.body.classId !== undefined) updates.class_id = parseInt(req.body.classId, 10);
+        if (req.body.studentId !== undefined) updates.student_id = parseInt(req.body.studentId, 10);
         if (req.body.title !== undefined) updates.title = req.body.title;
         if (req.body.scheduledAt !== undefined) updates.scheduled_at = req.body.scheduledAt;
         if (req.body.location !== undefined) updates.location = req.body.location;
         if (req.body.status !== undefined) updates.status = req.body.status;
 
         const updated = await Soutenance.update(id, updates);
+        const newScheduledAt = req.body.scheduledAt;
+        const isDateChanged = newScheduledAt && newScheduledAt !== existing.scheduledAt;
+        if (isDateChanged) {
+            try {
+                const jury = await Soutenance.listJury(id);
+                const recipients = new Set();
+                if (updated.studentId) recipients.add(updated.studentId);
+                jury.forEach((member) => recipients.add(member.id));
+                const studentLabel = updated.studentFirstName && updated.studentLastName
+                    ? `${updated.studentFirstName} ${updated.studentLastName}`
+                    : `Etudiant #${updated.studentId}`;
+                const formattedDate = new Date(updated.scheduledAt).toLocaleString('fr-FR', {
+                    dateStyle: 'short',
+                    timeStyle: 'short'
+                });
+                for (const userId of recipients) {
+                    await createNotification({
+                        userId,
+                        title: "Soutenance replanifiee",
+                        message: `La soutenance de ${studentLabel} a ete replanifiee au ${formattedDate}.`,
+                        type: "INFO",
+                        link: "/soutenances"
+                    });
+                }
+            } catch (notifyError) {
+                console.warn("Notification soutenance replanifiee echouee:", notifyError.message);
+            }
+        }
         return res.json({ success: true, data: updated });
     } catch (error) {
         console.error('Erreur lors de la mise à jour de la soutenance:', error);
@@ -111,6 +141,23 @@ const addJuryMember = async (req, res) => {
             return res.status(400).json({ success: false, message: ERROR_MESSAGES.BAD_REQUEST });
         }
         const row = await Soutenance.addJury(id, parseInt(userId, 10));
+        try {
+            const soutenance = await Soutenance.findById(id);
+            if (soutenance) {
+                const studentLabel = soutenance.studentFirstName && soutenance.studentLastName
+                    ? `${soutenance.studentFirstName} ${soutenance.studentLastName}`
+                    : `Etudiant #${soutenance.studentId}`;
+                await createNotification({
+                    userId: parseInt(userId, 10),
+                    title: 'Affectation jury',
+                    message: `Vous etes assigne a la soutenance de ${studentLabel}.`,
+                    type: 'INFO',
+                    link: '/soutenances'
+                });
+            }
+        } catch (notifyError) {
+            console.warn('Notification jury echouee:', notifyError.message);
+        }
         return res.status(201).json({ success: true, data: row });
     } catch (error) {
         console.error('Erreur lors de l\'ajout du jury:', error);

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useClassesList, useUsers } from '../hooks/useUsers';
+import { useClassesList, useUsers, useClassMembers } from '../hooks/useUsers';
 import {
   useSoutenances,
   useCreateSoutenance,
@@ -16,6 +16,7 @@ import { Modal } from '../components/UI/Modal';
 import { Table } from '../components/UI/Table';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import toast from 'react-hot-toast';
 
 const statusLabels: Record<string, string> = {
   PLANNED: 'Planifiée',
@@ -28,9 +29,11 @@ const statusLabels: Record<string, string> = {
 export const Soutenances: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const isStudent = user?.role === 'ALTERNANT' || user?.role === 'ETUDIANT_CLASSIQUE';
   const { classes = [] } = useClassesList();
   const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const { data: soutenances = [] } = useSoutenances(isAdmin ? selectedClassId || undefined : undefined);
+  const { members = [] } = useClassMembers(selectedClassId);
+  const { data: soutenances = [] } = useSoutenances(isAdmin ? { classId: selectedClassId || undefined } : undefined);
   const { mutate: createSoutenance, isPending: creating } = useCreateSoutenance();
   const { mutate: updateSoutenance, isPending: updating } = useUpdateSoutenance();
   const { mutate: deleteSoutenance, isPending: deleting } = useDeleteSoutenance();
@@ -56,20 +59,71 @@ export const Soutenances: React.FC = () => {
     return (users || []).filter((u: any) => ['JURY', 'INTERVENANT', 'TUTEUR_ECOLE'].includes(u.role));
   }, [users]);
 
+  const studentOptions = useMemo(() => {
+    const fromMembers = (members || []).filter((m: any) => ['ALTERNANT', 'ETUDIANT_CLASSIQUE'].includes(m.role));
+    if (fromMembers.length) return fromMembers;
+    if (!isAdmin || !selectedClassId) return fromMembers;
+    return (users || []).filter(
+      (u: any) =>
+        ['ALTERNANT', 'ETUDIANT_CLASSIQUE'].includes(u.role) &&
+        u.classId?.toString() === selectedClassId.toString()
+    );
+  }, [members, users, isAdmin, selectedClassId]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const [studentId, setStudentId] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [location, setLocation] = useState('');
   const [status, setStatus] = useState<'PLANNED' | 'CONFIRMED' | 'IN_PROGRESS' | 'EVALUATED' | 'ARCHIVED'>('PLANNED');
 
   React.useEffect(() => {
-    if (isAdmin && !selectedClassId && classes.length) {
+    if (isAdmin && !selectedClassId && classes.length === 1) {
       setSelectedClassId(classes[0].id);
     }
   }, [isAdmin, selectedClassId, classes]);
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    if (isStudent) {
+      return [
+        {
+          header: 'Date / heure',
+          accessor: (row: any) => format(new Date(row.scheduledAt), 'dd/MM/yyyy HH:mm', { locale: fr }),
+        },
+        {
+          header: 'Lieu',
+          accessor: (row: any) => row.location || '-',
+        },
+        {
+          header: 'Jury',
+          accessor: (row: any) => {
+            const members = row.juryMembers || [];
+            if (!members.length) return '-';
+            return members.map((m: any) => `${m.firstname} ${m.lastname}`).join(', ');
+          },
+        },
+        {
+          header: 'Statut',
+          accessor: (row: any) => statusLabels[row.status] || row.status,
+        },
+        {
+          header: 'Note',
+          accessor: (row: any) =>
+            row.validatedScore !== null && row.validatedScore !== undefined
+              ? Number(row.validatedScore).toFixed(2)
+              : '-',
+        },
+      ];
+    }
+
+    return [
+      {
+        header: 'Etudiant',
+        accessor: (row: any) =>
+          row.studentFirstName && row.studentLastName
+            ? `${row.studentFirstName} ${row.studentLastName}`
+            : row.studentId ? `#${row.studentId}` : '-',
+      },
       {
         header: 'Titre',
         accessor: 'title' as const,
@@ -108,6 +162,7 @@ export const Soutenances: React.FC = () => {
                   onClick={() => {
                     setSelectedSoutenance(row);
                     setSelectedClassId(row.classId?.toString() || '');
+                    setStudentId(row.studentId?.toString() || '');
                     setTitle(row.title || '');
                     setScheduledAt(row.scheduledAt ? row.scheduledAt.slice(0, 16) : '');
                     setLocation(row.location || '');
@@ -125,21 +180,27 @@ export const Soutenances: React.FC = () => {
           </div>
         ),
       },
-    ],
-    [canCreate, classNameById, deleteSoutenance, deleting]
-  );
+    ];
+  }, [isStudent, canCreate, classNameById, deleteSoutenance, deleting]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Soutenances</h1>
-          <p className="text-gray-600">Planification et convocations des soutenances</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isStudent ? 'Mes Rendez-vous' : 'Soutenances'}
+          </h1>
+          <p className="text-gray-600">
+            {isStudent
+              ? 'Consultez les soutenances planifiees pour vous'
+              : 'Planification et convocations des soutenances'}
+          </p>
         </div>
         {canCreate && (
           <Button
             onClick={() => {
               setSelectedSoutenance(null);
+              setStudentId('');
               setTitle('');
               setScheduledAt('');
               setLocation('');
@@ -161,7 +222,7 @@ export const Soutenances: React.FC = () => {
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
-              <option value="">Sélectionner</option>
+              <option value="">Toutes les classes</option>
               {classes.map((cls: any) => (
                 <option key={cls.id} value={cls.id}>
                   {cls.name}
@@ -183,13 +244,39 @@ export const Soutenances: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Classe</label>
             <select
               value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
+              onChange={(e) => {
+                setSelectedClassId(e.target.value);
+                setStudentId('');
+              }}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">Sélectionner</option>
               {classes.map((cls: any) => (
                 <option key={cls.id} value={cls.id}>
                   {cls.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Etudiant</label>
+            <select
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              disabled={!selectedClassId}
+            >
+              <option value="">
+                {selectedClassId ? 'Sélectionner' : 'Sélectionner une classe'}
+              </option>
+              {selectedClassId && studentOptions.length === 0 && (
+                <option value="" disabled>
+                  Aucun étudiant dans cette classe
+                </option>
+              )}
+              {studentOptions.map((m: any) => (
+                <option key={m.id} value={m.id}>
+                  {m.firstName} {m.lastName}
                 </option>
               ))}
             </select>
@@ -242,17 +329,29 @@ export const Soutenances: React.FC = () => {
             <Button
               isLoading={creating || updating}
               onClick={() => {
-                if (!selectedClassId || !title || !scheduledAt) return;
+                if (!selectedClassId) {
+                  toast.error('Selectionnez une classe');
+                  return;
+                }
+                if (!studentId) {
+                  toast.error('Selectionnez un etudiant');
+                  return;
+                }
+                if (!title || !scheduledAt) {
+                  toast.error('Titre et date requis');
+                  return;
+                }
                 if (selectedSoutenance) {
                   updateSoutenance({
                     id: selectedSoutenance.id,
-                    payload: { classId: selectedClassId, title, scheduledAt, location, status },
+                    payload: { studentId, title, scheduledAt, location, status },
                   });
                 } else {
-                  createSoutenance({ classId: selectedClassId, title, scheduledAt, location, status });
+                  createSoutenance({ studentId, title, scheduledAt, location, status });
                 }
                 setIsModalOpen(false);
                 setSelectedSoutenance(null);
+                setStudentId('');
                 setTitle('');
                 setScheduledAt('');
                 setLocation('');

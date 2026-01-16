@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   useMyJournals,
@@ -15,6 +15,7 @@ import { Modal } from '../components/UI/Modal';
 import { Table } from '../components/UI/Table';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import toast from 'react-hot-toast';
 
 const statusLabels: Record<string, string> = {
   DRAFT: 'Brouillon',
@@ -42,12 +43,30 @@ export const Journals: React.FC = () => {
   const [content, setContent] = useState('');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
+  const hasInvalidPeriod = (start: string, end: string) => {
+    if (!start || !end) return false;
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return true;
+    return startDate >= endDate;
+  };
 
   React.useEffect(() => {
     if (isStaff && !selectedClassId && classes?.length) {
       setSelectedClassId(classes[0].id);
     }
   }, [isStaff, selectedClassId, classes]);
+
+  const openJournal = useCallback((row: any, readOnly: boolean) => {
+    setEditingJournal(row);
+    setPeriodStart(row.periodStart ? format(new Date(row.periodStart), 'yyyy-MM-dd') : '');
+    setPeriodEnd(row.periodEnd ? format(new Date(row.periodEnd), 'yyyy-MM-dd') : '');
+    setContent(row.content || '');
+    setIsReadOnly(readOnly);
+    setIsModalOpen(true);
+  }, []);
 
   const journalRows = isStudent ? myJournals : classJournals;
 
@@ -84,17 +103,18 @@ export const Journals: React.FC = () => {
         header: 'Actions',
         accessor: (row: any) => (
           <div className="flex gap-2">
+            {isStudent && row.status !== 'DRAFT' && (
+              <Button size="sm" variant="outline" onClick={() => openJournal(row, true)}>
+                Voir
+              </Button>
+            )}
             {isStudent && row.status === 'DRAFT' && (
               <>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    setEditingJournal(row);
-                    setPeriodStart(row.periodStart ? format(new Date(row.periodStart), 'yyyy-MM-dd') : '');
-                    setPeriodEnd(row.periodEnd ? format(new Date(row.periodEnd), 'yyyy-MM-dd') : '');
-                    setContent(row.content || '');
-                    setIsModalOpen(true);
+                    openJournal(row, false);
                   }}
                 >
                   Éditer
@@ -103,6 +123,11 @@ export const Journals: React.FC = () => {
                   Soumettre
                 </Button>
               </>
+            )}
+            {isStaff && row.status !== 'DRAFT' && (
+              <Button size="sm" variant="outline" onClick={() => openJournal(row, true)}>
+                Voir
+              </Button>
             )}
             {isStaff && row.status === 'SUBMITTED' && (
               <>
@@ -119,7 +144,7 @@ export const Journals: React.FC = () => {
       },
     ];
     return base;
-  }, [isStudent, isStaff, submitJournal, validateJournal]);
+  }, [isStudent, isStaff, openJournal, submitJournal, validateJournal]);
 
   return (
     <div className="space-y-6">
@@ -128,7 +153,20 @@ export const Journals: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Journaux de formation</h1>
           <p className="text-gray-600">Suivi et validation des journaux</p>
         </div>
-        {isStudent && <Button onClick={() => setIsModalOpen(true)}>Nouveau journal</Button>}
+        {isStudent && (
+          <Button
+            onClick={() => {
+              setEditingJournal(null);
+              setContent('');
+              setPeriodStart('');
+              setPeriodEnd('');
+              setIsReadOnly(false);
+              setIsModalOpen(true);
+            }}
+          >
+            Nouveau journal
+          </Button>
+        )}
       </div>
 
       {isStaff && (
@@ -160,8 +198,15 @@ export const Journals: React.FC = () => {
         onClose={() => {
           setIsModalOpen(false);
           setEditingJournal(null);
+          setIsReadOnly(false);
         }}
-        title={editingJournal ? 'Modifier un journal' : 'Créer un journal'}
+        title={
+          editingJournal
+            ? isReadOnly
+              ? 'Consulter un journal'
+              : 'Modifier un journal'
+            : 'Créer un journal'
+        }
         size="lg"
       >
         <div className="space-y-4">
@@ -172,6 +217,7 @@ export const Journals: React.FC = () => {
                 type="date"
                 value={periodStart}
                 onChange={(e) => setPeriodStart(e.target.value)}
+                disabled={isReadOnly}
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -181,6 +227,7 @@ export const Journals: React.FC = () => {
                 type="date"
                 value={periodEnd}
                 onChange={(e) => setPeriodEnd(e.target.value)}
+                disabled={isReadOnly}
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -191,33 +238,50 @@ export const Journals: React.FC = () => {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={6}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              readOnly={isReadOnly}
+              className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+                isReadOnly ? 'bg-gray-50' : ''
+              }`}
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-              Annuler
-            </Button>
             <Button
-              isLoading={creating || updating}
+              variant="outline"
               onClick={() => {
-                if (editingJournal) {
-                  updateJournal({
-                    id: editingJournal.id,
-                    payload: { periodStart, periodEnd, content, status: 'DRAFT' },
-                  });
-                } else {
-                  createJournal({ periodStart, periodEnd, content, status: 'DRAFT' });
-                }
                 setIsModalOpen(false);
                 setEditingJournal(null);
-                setContent('');
-                setPeriodStart('');
-                setPeriodEnd('');
+                setIsReadOnly(false);
               }}
             >
-              {editingJournal ? 'Mettre à jour' : 'Créer'}
+              {isReadOnly ? 'Fermer' : 'Annuler'}
             </Button>
+            {!isReadOnly && (
+              <Button
+                isLoading={creating || updating}
+                onClick={() => {
+                  if (hasInvalidPeriod(periodStart, periodEnd)) {
+                    toast.error('La date de debut doit etre inferieure a la date de fin.');
+                    return;
+                  }
+                  if (editingJournal) {
+                    updateJournal({
+                      id: editingJournal.id,
+                      payload: { periodStart, periodEnd, content, status: 'DRAFT' },
+                    });
+                  } else {
+                    createJournal({ periodStart, periodEnd, content, status: 'DRAFT' });
+                  }
+                  setIsModalOpen(false);
+                  setEditingJournal(null);
+                  setContent('');
+                  setPeriodStart('');
+                  setPeriodEnd('');
+                  setIsReadOnly(false);
+                }}
+              >
+                {editingJournal ? 'Mettre à jour' : 'Créer'}
+              </Button>
+            )}
           </div>
         </div>
       </Modal>

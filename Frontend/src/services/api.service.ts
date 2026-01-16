@@ -186,8 +186,8 @@ export const userService = {
     const backendData: any = {
       email: payload.email,
       password: payload.password,
-      firstname: payload.firstName,
-      lastname: payload.lastName,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
       role: payload.role,
       company: payload.company,
       phone: payload.phone,
@@ -195,20 +195,20 @@ export const userService = {
       classId: payload.classId,
     };
 
-    const { data } = await api.post('/auth/register', backendData);
-    const newUser = data.data.user;
+    const { data } = await api.post('/users', backendData);
+    const newUser = data?.data || data;
     return {
       id: newUser.id.toString(),
       email: newUser.email,
-      firstName: newUser.firstname,
-      lastName: newUser.lastname,
+      firstName: newUser.firstName,
+      lastName: newUser.lastName,
       role: newUser.role,
-      classId: newUser.class_id?.toString(),
-      createdAt: newUser.created_at || new Date().toISOString(),
+      classId: newUser.classId?.toString(),
+      createdAt: newUser.createdAt || new Date().toISOString(),
       company: newUser.company,
       phone: newUser.phone,
-      jobTitle: newUser.job_title,
-      isActive: newUser.is_active,
+      jobTitle: newUser.jobTitle,
+      isActive: newUser.isActive,
     };
   },
 };
@@ -258,6 +258,9 @@ export const classService = {
         status: sub.status,
         feedback: sub.feedback,
         submittedAt: sub.submittedAt,
+        firstname: sub.firstname,
+        lastname: sub.lastname,
+        email: sub.email,
       })),
       createdAt: req.createdAt,
     }));
@@ -373,7 +376,16 @@ export const requirementService = {
       status: sub.status,
       feedback: sub.feedback,
       submittedAt: sub.submittedAt,
+      firstname: sub.firstname,
+      lastname: sub.lastname,
+      email: sub.email,
     }));
+  },
+  downloadSubmission: async (requirementId: string, submissionId: string): Promise<Blob> => {
+    const { data } = await api.get(`/requirements/${requirementId}/submissions/${submissionId}/download`, {
+      responseType: 'blob',
+    });
+    return data;
   },
 
   submitRequirement: async (requirementId: string, file: File): Promise<Submission> => {
@@ -430,6 +442,11 @@ export const fileService = {
 
   getClassFiles: async (classId: string): Promise<File[]> => {
     const { data } = await api.get(`/files/class/${classId}`);
+    return data;
+  },
+
+  getSharedFiles: async (): Promise<File[]> => {
+    const { data } = await api.get('/files/shared');
     return data;
   },
 
@@ -656,9 +673,12 @@ export const interviewService = {
 // ==================== SOUTENANCE ENDPOINTS ====================
 
 export const soutenanceService = {
-  getSoutenances: async (classId?: string): Promise<Soutenance[]> => {
-    const params = classId ? `?classId=${classId}` : '';
-    const response = await api.get(`/soutenances${params}`);
+  getSoutenances: async (filters?: { classId?: string; studentId?: string }): Promise<Soutenance[]> => {
+    const params = new URLSearchParams();
+    if (filters?.classId) params.append('classId', filters.classId);
+    if (filters?.studentId) params.append('studentId', filters.studentId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const response = await api.get(`/soutenances${query}`);
     return response.data.data || [];
   },
 
@@ -667,7 +687,7 @@ export const soutenanceService = {
     return response.data.data;
   },
 
-  createSoutenance: async (payload: Partial<Soutenance> & { classId: string; title: string; scheduledAt: string }): Promise<Soutenance> => {
+  createSoutenance: async (payload: Partial<Soutenance> & { studentId: string; title: string; scheduledAt: string }): Promise<Soutenance> => {
     const response = await api.post('/soutenances', payload);
     return response.data.data;
   },
@@ -743,6 +763,27 @@ export const evaluationService = {
   getEvaluationScores: async (evaluationId: string): Promise<EvaluationScore[]> => {
     const response = await api.get(`/evaluations/${evaluationId}/scores`);
     return response.data.data || [];
+  },
+
+  getAdminEvaluations: async (status?: 'PENDING' | 'VALIDATED' | 'REJECTED'): Promise<any[]> => {
+    const params = status ? `?status=${status}` : '';
+    const response = await api.get(`/evaluations/admin${params}`);
+    return response.data.data || [];
+  },
+
+  validateEvaluation: async (evaluationId: string, status: 'VALIDATED' | 'REJECTED'): Promise<Evaluation> => {
+    const response = await api.patch(`/evaluations/${evaluationId}/validate`, { status });
+    return response.data.data;
+  },
+
+  validateEvaluationGroup: async (payload: {
+    studentId: string;
+    contextType: 'JOURNAL' | 'REQUIREMENT' | 'SOUTENANCE';
+    contextId: string;
+    status: 'VALIDATED' | 'REJECTED';
+  }): Promise<any> => {
+    const response = await api.patch('/evaluations/group/validate', payload);
+    return response.data.data;
   },
 };
 

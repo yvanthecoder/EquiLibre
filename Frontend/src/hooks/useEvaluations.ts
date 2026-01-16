@@ -60,5 +60,12 @@ export const useCreateEvaluation = () => {
       queryClient.invalidateQueries({ queryKey: ['evaluations'] });
       toast.success('Évaluation enregistrée');
     },
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        "Impossible d'enregistrer l'evaluation";
+      toast.error(message);
+    },
   });
 };

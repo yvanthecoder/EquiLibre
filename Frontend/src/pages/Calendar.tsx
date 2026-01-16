@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { useCreateEvent, useEvents, useUpdateEvent } from '../hooks/useEvents';
 import { useCreateInterview, useInterviews } from '../hooks/useInterviews';
+import { useSoutenances } from '../hooks/useSoutenances';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { Modal } from '../components/UI/Modal';
@@ -11,6 +12,8 @@ import {
   format,
   startOfMonth,
   endOfMonth,
+  startOfWeek,
+  endOfWeek,
   eachDayOfInterval,
   isSameMonth,
   isToday,
@@ -81,11 +84,14 @@ export const Calendar: React.FC = () => {
   const { createEvent, isCreating } = useCreateEvent();
   const { updateEvent, deleteEvent, isUpdating, isDeleting } = useUpdateEvent(activeClassId || '');
   const { data: interviews = [] } = useInterviews();
+  const { data: soutenances = [] } = useSoutenances();
   const { mutate: createInterview, isPending: creatingInterview } = useCreateInterview();
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const interviewEvents = useMemo(() => {
     const statusLabels: Record<string, string> = {
@@ -110,15 +116,52 @@ export const Calendar: React.FC = () => {
     });
   }, [interviews, activeClassId, user?.classId]);
 
+  const soutenanceEvents = useMemo(() => {
+    return (soutenances || []).map((soutenance: any) => {
+      const start = new Date(soutenance.scheduledAt);
+      const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+      const studentLabel =
+        soutenance.studentFirstName && soutenance.studentLastName
+          ? ` - ${soutenance.studentFirstName} ${soutenance.studentLastName}`
+          : '';
+      return {
+        id: `SOUT-${soutenance.id}`,
+        title: `Soutenance${studentLabel}`,
+        description: soutenance.location ? `Lieu: ${soutenance.location}` : 'Soutenance planifiee',
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        classId: soutenance.classId?.toString() || activeClassId || user?.classId || '',
+        type: 'EXAM' as const,
+      };
+    });
+  }, [soutenances, activeClassId, user?.classId]);
+
   const combinedEvents = useMemo(() => {
     const base = events || [];
-    const withInterviews = [...base, ...interviewEvents];
+    const withInterviews = [...base, ...interviewEvents, ...soutenanceEvents];
     return showAcademic ? [...withInterviews, ...academicEvents] : withInterviews;
-  }, [events, interviewEvents, showAcademic]);
+  }, [events, interviewEvents, soutenanceEvents, showAcademic]);
+
+  const getDateKey = (value?: string) => {
+    if (!value) return '';
+    if (value.length >= 10) return value.slice(0, 10);
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return '';
+    return format(parsed, 'yyyy-MM-dd');
+  };
 
   const getEventsForDay = (day: Date) => {
-    const target = format(day, 'yyyy-MM-dd');
-    return combinedEvents?.filter((event) => format(new Date(event.startDate), 'yyyy-MM-dd') === target) || [];
+    const dayKey = format(day, 'yyyy-MM-dd');
+    return (
+      combinedEvents?.filter((event) => {
+        const startKey = getDateKey(event.startDate);
+        if (!startKey) return false;
+        const endKey = getDateKey(event.endDate || event.startDate) || startKey;
+        const minKey = startKey <= endKey ? startKey : endKey;
+        const maxKey = startKey <= endKey ? endKey : startKey;
+        return dayKey >= minKey && dayKey <= maxKey;
+      }) || []
+    );
   };
 
   const sortedEvents = useMemo(() => {
@@ -127,10 +170,16 @@ export const Calendar: React.FC = () => {
     );
   }, [combinedEvents]);
 
+  const upcomingEvents = useMemo(() => {
+    const now = new Date().getTime();
+    return sortedEvents.filter((event) => new Date(event.startDate).getTime() >= now);
+  }, [sortedEvents]);
+
   const dayEvents = useMemo(() => {
     if (!selectedDay) return [];
-    const target = format(selectedDay, 'yyyy-MM-dd');
-    return combinedEvents?.filter((event) => format(new Date(event.startDate), 'yyyy-MM-dd') === target) || [];
+    return getEventsForDay(selectedDay).sort(
+      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    );
   }, [selectedDay, combinedEvents]);
 
   const getEventTypeColor = (type: string) => {
@@ -249,11 +298,6 @@ export const Calendar: React.FC = () => {
     setSelectedDay(day);
     setShowDayModal(true);
     setFocusedEventId(null);
-    const isoDate = format(day, 'yyyy-MM-dd');
-    const next = new URLSearchParams(searchParams);
-    next.set('date', isoDate);
-    next.delete('eventId');
-    setSearchParams(next, { replace: true });
   };
 
   React.useEffect(() => {
@@ -447,7 +491,7 @@ export const Calendar: React.FC = () => {
             <Card>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Prochains événements</h3>
               <div className="space-y-3">
-                {sortedEvents.slice(0, 5).map((event) => (
+                {upcomingEvents.slice(0, 5).map((event) => (
                   <div
                     key={event.id}
                     className="p-3 bg-gray-50 rounded-md cursor-pointer hover:bg-gray-100 transition"
@@ -818,7 +862,9 @@ const CalendarModals: React.FC<CalendarModalsProps> = ({
               </div>
               <div className="text-sm text-gray-700 mb-1">{event.description || 'Pas de description'}</div>
               <div className="text-xs text-gray-500">{getEventTypeLabel(event.type)}</div>
-              {canManageEvents && !event.id?.toString().startsWith('INT-') && (
+              {canManageEvents &&
+                !event.id?.toString().startsWith('INT-') &&
+                !event.id?.toString().startsWith('SOUT-') && (
                 <div className="mt-3 flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => onEditEvent(event)}>
                     Modifier

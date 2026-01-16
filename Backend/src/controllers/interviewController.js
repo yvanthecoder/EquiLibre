@@ -54,11 +54,12 @@ const createInterview = async (req, res) => {
     try {
         const role = req.user.role;
         const { studentId, tuteurId, maitreId, scheduledAt, location, status, summary } = req.body;
-        if (!studentId || !scheduledAt) {
+        const requestedStudentId = Number(studentId);
+        if (!requestedStudentId || !scheduledAt) {
             return res.status(400).json({ success: false, message: ERROR_MESSAGES.BAD_REQUEST });
         }
 
-        if ([USER_ROLES.ALTERNANT, USER_ROLES.ETUDIANT_CLASSIQUE].includes(role) && studentId !== req.user.userId) {
+        if ([USER_ROLES.ALTERNANT, USER_ROLES.ETUDIANT_CLASSIQUE].includes(role) && requestedStudentId !== req.user.userId) {
             return res.status(403).json({ success: false, message: ERROR_MESSAGES.FORBIDDEN });
         }
 
@@ -78,7 +79,7 @@ const createInterview = async (req, res) => {
         }
 
         const interview = await Interview.create({
-            studentId,
+            studentId: requestedStudentId,
             tuteurId: resolvedTuteurId,
             maitreId: resolvedMaitreId,
             scheduledAt,
@@ -117,10 +118,18 @@ const createInterview = async (req, res) => {
 
         return res.status(201).json({ success: true, data: interview });
     } catch (error) {
-        console.error('Erreur lors de la création de l\'entretien:', error);
+        const message = error?.message || '';
+        if (message.includes('interview_status') && message.includes('invalid input value for enum')) {
+            return res.status(400).json({
+                success: false,
+                message: "Statut PROPOSED non supporte en base. Executez: ALTER TYPE interview_status ADD VALUE IF NOT EXISTS 'PROPOSED';"
+            });
+        }
+        console.error('Erreur lors de la creation de l\'entretien:', error);
         return res.status(500).json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
     }
 };
+
 
 const updateInterview = async (req, res) => {
     try {
