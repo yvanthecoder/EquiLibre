@@ -37,8 +37,13 @@
 - `markAllAsRead()` - Marquer toutes les notifications comme lues
 - `deleteNotification(id)` - Supprimer une notification
 - `createNotification()` - Créer une notification (admin uniquement)
+                                                 
 
 ####   Routes créées: `Backend/src/routes/notificationRoutes.js`
+
+
+
+
 
 **Endpoints disponibles:**
 ```
@@ -50,6 +55,10 @@ POST   /api/notifications           - Créer (admin/tuteur)
 ```
 
 ####   Routes enregistrées dans `server.js`
+
+
+
+
 ```javascript
 const notificationRoutes = require('./routes/notificationRoutes');
 app.use('/api/notifications', notificationRoutes);
@@ -66,6 +75,8 @@ date-fns.js:1827 Uncaught RangeError: Invalid time value
 **Cause:** Le champ `user.createdAt` était `undefined` ou invalide lors du formatage de date.
 
 **Solution appliquée:**
+
+
 
 ```typescript
 // AVANT (ligne 104)

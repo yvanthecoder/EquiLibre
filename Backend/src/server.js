@@ -16,10 +16,13 @@ const journalRoutes = require('./routes/journalRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
 const soutenanceRoutes = require('./routes/soutenanceRoutes');
 const evaluationGridRoutes = require('./routes/evaluationGridRoutes');
-const evaluationRoutes = require('./routes/evaluationRoutes');
+const evaluationRoutes = require('./routes/evaluationRoutes');  
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+   
 
+
+console.log('ready')
 // Initialiser l'application Express
 const app = express();
 
