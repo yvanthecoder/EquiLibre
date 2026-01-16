@@ -20,7 +20,7 @@ cd Backend
 npm install
 npm run db:seed
 
-# Frontend (à développer)
+# Frontend
 cd Frontend
 npm install
 ```
@@ -33,10 +33,11 @@ cd Backend
 npm run dev
 #   Serveur sur http://localhost:5001
 
-# Terminal 2 - Frontend (quand développé)
+# Terminal 2 - Frontend
 cd Frontend
 npm start
-#   Frontend sur http://localhost:3000
+npm run dev
+#   Frontend sur http://localhost:5173
 ```
 
 ---
