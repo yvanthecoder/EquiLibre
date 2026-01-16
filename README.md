@@ -1,16 +1,16 @@
 # 🎓 PLATEFORME EQUILIBRE
 
-Système de gestion pédagogique avec 5 rôles utilisateurs : Alternants, Étudiants Classiques, Maîtres d'Apprentissage, Tuteurs d'École et Administrateurs.
+Système de gestion pédagogique avec 7 rôles utilisateurs : Alternants, Étudiants Classiques, Maîtres d'Apprentissage, Tuteurs d'École, Intervenants, Jurys et Administrateur.
 
 ---
 
-##   DÉMARRAGE RAPIDE
+## 🚀 DÉMARRAGE RAPIDE
 
 ### 1️⃣ Prérequis
 
-- Node.js v16+
-- PostgreSQL v12+
-- npm
+- Node.js v18+ (compatible avec les fonctionnalités modernes)
+- PostgreSQL v14+
+- npm (ou yarn)
 
 ### 2️⃣ Installation
 
@@ -35,7 +35,6 @@ npm run dev
 
 # Terminal 2 - Frontend
 cd Frontend
-npm start
 npm run dev
 #   Frontend sur http://localhost:5173
 ```
@@ -46,39 +45,44 @@ npm run dev
 
 ```
 EquiLibre/
-├── Backend/              # API Node.js/Express   TERMINÉ
+├── Backend/              # API Node.js/Express 
 │   ├── src/
-│   │   ├── config/       # Configuration DB
+│   │   ├── config/       # Configuration DB et environnement
 │   │   ├── controllers/  # Logique métier
-│   │   ├── middlewares/  # Auth & rôles
+│   │   ├── middlewares/  # Authentification & gestion des rôles
 │   │   ├── models/       # Modèles de données
 │   │   ├── routes/       # Routes API
+│   │   ├── services/     # Services métiers
+│   │   ├── utils/        # Fonctions utilitaires
 │   │   ├── database/     # Scripts SQL
-│   │   └── server.js     # Point d'entrée
+│   │   └── server.js     # Point d'entrée du serveur
+│   └── uploads/          # Fichiers uploadés
+│   └── .env              # Variables d'environnement
 │   └── README.md         # Documentation API
 │
-├── Frontend/             # Interface React (à développer)
-│   └── README.md
+├── Frontend/             # Interface React
+│   ├── src/              # Code source React
+│   └── README.md         # Documentation Frontend
 │
 ├── GUIDE_DEMARRAGE.md    # 📖 Guide complet de démarrage
-├── TESTS_VALIDATION.md   #   Rapport de tests
-├── EXEMPLES_API.md       #   Exemples de requêtes
+├── TESTS_VALIDATION.md   # Rapport de tests
+├── EXEMPLES_API.md       # Exemples de requêtes API
 └── README.md             # Ce fichier
 ```
 
 ---
 
-## 👥 Les 5 Rôles
+## 👥 Les 7 Rôles
 
-| Rôle | Description | Permissions |
-|------|-------------|-------------|
-|   **ADMIN** | Administrateur | Accès complet, gestion utilisateurs/classes/requirements |
-|   **TUTEUR_ECOLE** | Tuteur d'école | Valider requirements, gérer ses classes |
-|   **MAITRE_APP** | Maître d'apprentissage | Voir données de ses apprentis |
-|   **ALTERNANT** | Étudiant en alternance | Voir ses requirements et classes |
-|   **ETUDIANT_CLASSIQUE** | Étudiant cycle classique | Voir ses requirements et classes |
-|   **INTERVENANT**  | Intervenant  |  Assister et noter les soutenances  | 
-|   **JURY**  | Jury  |  Présider et noter les soutenances  | 
+| Rôle                  | Description                                   | Permissions principales                          |
+|-----------------------|-----------------------------------------------|-------------------------------------------------|
+| **ADMIN**             | Administrateur                               | Gestion complète (utilisateurs, classes, etc.)  |
+| **TUTEUR_ECOLE**      | Tuteur d'école                               | Valider les requirements, gérer ses classes     |
+| **MAITRE_APP**        | Maître d'apprentissage                       | Voir les données de ses apprentis               |
+| **ALTERNANT**         | Étudiant en alternance                       | Voir ses requirements et classes                |
+| **ETUDIANT_CLASSIQUE**| Étudiant cycle classique                     | Voir ses requirements et classes                |
+| **INTERVENANT**       | Intervenant                                  | Assister et noter les soutenances               |
+| **JURY**              | Jury                                         | Présider et noter les soutenances               |
 
 ---
 
@@ -86,33 +90,34 @@ EquiLibre/
 
 **Mot de passe pour tous :** `password123`
 
-| Email | Rôle |
-|-------|------|
-| admin@equilibre.com | ADMIN |
-| tuteur1@equilibre.com | TUTEUR_ECOLE |
-| maitre1@entreprise.com | MAITRE_APP |
-| alternant1@equilibre.com | ALTERNANT |
-| etudiant1@equilibre.com | ETUDIANT_CLASSIQUE |
-| intervenant1@equilibre.com  |  INTERVENANT  |
-| jury1@equilibre.com  |  JURY  |
+| Email                   | Rôle                  |
+|-------------------------|-----------------------|
+| admin@equilibre.com     | ADMIN                |
+| tuteur1@equilibre.com   | TUTEUR_ECOLE         |
+| maitre1@entreprise.com  | MAITRE_APP           |
+| alternant1@equilibre.com| ALTERNANT            |
+| etudiant1@equilibre.com | ETUDIANT_CLASSIQUE   |
+| intervenant1@equilibre.com | INTERVENANT       |
+| jury1@equilibre.com     | JURY                 |
+
 ---
 
-##   Documentation
+## 📖 Documentation
 
-### 📖 Guides complets
+### Guides complets
 
-- **[GUIDE_DEMARRAGE.md](GUIDE_DEMARRAGE.md)** - Comment démarrer le système complet
-- **[TESTS_VALIDATION.md](TESTS_VALIDATION.md)** - Preuve du bon fonctionnement
-- **[EXEMPLES_API.md](EXEMPLES_API.md)** - Exemples de requêtes curl
-- **[Backend/README.md](Backend/README.md)** - Documentation API complète
+- **[GUIDE_DEMARRAGE.md](GUIDE_DEMARRAGE.md)** - Instructions détaillées pour démarrer le projet
+- **[TESTS_VALIDATION.md](TESTS_VALIDATION.md)** - Rapport des tests réalisés
+- **[EXEMPLES_API.md](EXEMPLES_API.md)** - Exemples de requêtes API
+- **[Backend/README.md](Backend/README.md)** - Documentation complète de l'API Backend
 
-### 🧪 Tests rapides
+### Tests rapides
 
 ```bash
-# Health check
+# Vérification de l'état du serveur
 curl http://localhost:5001/health
 
-# Login
+# Test de connexion
 curl -X POST http://localhost:5001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@equilibre.com","password":"password123"}'
@@ -120,39 +125,41 @@ curl -X POST http://localhost:5001/api/auth/login \
 
 ---
 
-##   État du projet
+## 📊 État du projet
 
-| Composant | Statut |
-|-----------|--------|
-| Backend API |   **EN COURS DE DEVELOPPEMENT** |
-| Base de données |   **TERMINÉ** |
-| Authentification JWT |   **TERMINÉ** |
-| Gestion des rôles |   **TERMINÉ** |
-| Endpoints API |   **TERMINÉ** |
-| Frontend React |   **EN COURS DE DEVELOPPEMENT** |
+| Composant              | Statut                  |
+|-------------------------|-------------------------|
+| Backend API            | **TERMINÉ**            |
+| Base de données        | **TERMINÉ**            |
+| Authentification JWT   | **TERMINÉ**            |
+| Gestion des rôles      | **TERMINÉ**            |
+| Endpoints API          | **TERMINÉ**            |
+| Frontend React         | **EN COURS DE DEVELOPPEMENT** |
 
 ---
 
 ## 🛠️ Technologies
 
 ### Backend
-- Node.js + Express
-- PostgreSQL
-- JWT (jsonwebtoken)
-- Bcrypt
-- CORS
+- **Node.js** + **Express**
+- **PostgreSQL**
+- **JWT** (jsonwebtoken)
+- **Bcrypt** pour le hachage des mots de passe
+- **CORS** pour la gestion des requêtes cross-origin
 
 ### Frontend
-- React
-- Axios / Fetch
-- React Router
-- Context API / Redux
+- **React**
+- **Axios** pour les appels API
+- **React Router** pour la navigation
+- **Context API** ou **Redux** pour la gestion d'état
 
 ---
 
-##   Prochaines étapes
+## 🔮 Prochaines étapes
 
-1.   Réalisation des US restantes
+1. Finaliser les fonctionnalités restantes du Frontend.
+2. Ajouter des tests unitaires et d'intégration.
+3. Optimiser les performances et la sécurité.
 
 ---
 
@@ -186,7 +193,7 @@ ISC
 
 ## 👥 Équipe
 
-EquiLibre Team - Projet SIGL
+**EquiLibre Team - Projet SIGL**
 - Yvan
 - Nassim
 - Adrien
@@ -194,5 +201,4 @@ EquiLibre Team - Projet SIGL
 
 ---
 
-**  BACKEND ET FRONTEND FONCTIONNEL !**
-
+**✅ BACKEND ET FRONTEND EN COURS DE FINALISATION !**
