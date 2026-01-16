@@ -17,6 +17,8 @@ import {
   eachDayOfInterval,
   isSameMonth,
   isToday,
+  startOfWeek,
+  endOfWeek,
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -89,32 +91,9 @@ export const Calendar: React.FC = () => {
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // lundi
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 }); // dimanche
   const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-
-  const interviewEvents = useMemo(() => {
-    const statusLabels: Record<string, string> = {
-      PROPOSED: 'Proposé',
-      PLANNED: 'Planifié',
-      CONFIRMED: 'Confirmé',
-      COMPLETED: 'Terminé',
-      ARCHIVED: 'Archivé',
-    };
-    return (interviews || []).map((interview) => {
-      const start = new Date(interview.scheduledAt);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
-      return {
-        id: `INT-${interview.id}`,
-        title: 'Entretien semestriel',
-        description: `Statut: ${statusLabels[interview.status] || interview.status}`,
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
-        classId: activeClassId || user?.classId || '',
-        type: 'MEETING' as const,
-      };
-    });
-  }, [interviews, activeClassId, user?.classId]);
 
   const soutenanceEvents = useMemo(() => {
     return (soutenances || []).map((soutenance: any) => {
