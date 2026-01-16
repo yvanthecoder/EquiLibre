@@ -3,6 +3,7 @@ const Requirement = require('../models/Requirement');
 const RequirementSubmission = require('../models/RequirementSubmission');
 const Event = require('../models/Event');
 const { ERROR_MESSAGES, USER_ROLES } = require('../config/constants');
+const { createNotification } = require('../utils/notifications');
 
 const mapClass = (cls) => ({
     id: cls.id,
@@ -64,6 +65,10 @@ const getAllClasses = async (req, res) => {
             classes = await Class.findAll();
         } else if (userRole === USER_ROLES.TUTEUR_ECOLE) {
             classes = await Class.findByTuteurId(userId);
+        } else if (userRole === USER_ROLES.MAITRE_APP) {
+            classes = await Class.findByMaitreId(userId);
+        } else if (userRole === USER_ROLES.JURY || userRole === USER_ROLES.INTERVENANT) {
+            classes = await Class.findByJuryUserId(userId);
         } else {
             classes = await Class.findByUserId(userId);
         }
@@ -302,6 +307,20 @@ const createEvent = async (req, res) => {
             classId,
             userId: req.user.userId
         });
+        try {
+            const members = await Class.getMembers(classId);
+            for (const member of members) {
+                await createNotification({
+                    userId: member.id,
+                    title: 'Nouvel événement',
+                    message: `Un nouvel événement a été ajouté: ${event.title}`,
+                    type: 'INFO',
+                    link: '/calendar'
+                });
+            }
+        } catch (notifyError) {
+            console.warn('Notification événement échouée:', notifyError.message);
+        }
         return res.status(201).json(event);
     } catch (error) {
         console.error('Erreur lors de la crAcation de l\'AcvAcnement:', error);

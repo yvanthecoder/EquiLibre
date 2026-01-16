@@ -1,21 +1,27 @@
 const jwt = require('jsonwebtoken');
 const { ERROR_MESSAGES } = require('../config/constants');
 const User = require('../models/User');
+const { parseCookies } = require('../utils/cookies');
 
 // Middleware pour vérifier le JWT
 const authenticate = async (req, res, next) => {
     try {
-        // Récupérer le token du header Authorization
         const authHeader = req.headers.authorization;
+        const cookies = parseCookies(req.headers.cookie || '');
+        let token = null;
 
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+        } else if (cookies.access_token) {
+            token = cookies.access_token;
+        }
+
+        if (!token) {
             return res.status(401).json({
                 success: false,
                 message: ERROR_MESSAGES.UNAUTHORIZED
             });
         }
-
-        const token = authHeader.substring(7); // Enlever "Bearer "
 
         // Vérifier le token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -67,9 +73,16 @@ const authenticate = async (req, res, next) => {
 const optionalAuth = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
+        const cookies = parseCookies(req.headers.cookie || '');
+        let token = null;
 
         if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.substring(7);
+            token = authHeader.substring(7);
+        } else if (cookies.access_token) {
+            token = cookies.access_token;
+        }
+
+        if (token) {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const user = await User.findById(decoded.userId);
 

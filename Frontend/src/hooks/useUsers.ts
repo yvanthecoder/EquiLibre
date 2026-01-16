@@ -16,10 +16,11 @@ export const useUser = (userId?: string) => {
   };
 };
 
-export const useUsers = () => {
+export const useUsers = (enabled = true) => {
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: userService.getAllUsers,
+    enabled,
   });
 
   return {
@@ -50,7 +51,7 @@ export const useUpdateUser = (userId: string) => {
       queryClient.invalidateQueries({ queryKey: ['users', userId] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
-      toast.success('Profil mis à jour !');
+      toast.success('Profil mis à jour');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la mise à jour';
@@ -71,7 +72,7 @@ export const useDeleteUser = () => {
     mutationFn: (userId: string) => userService.deleteUser(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Utilisateur supprimé !');
+      toast.success('Utilisateur supprimé');
     },
     onError: (error: any) => {
       const message = error.response?.data?.message || 'Erreur lors de la suppression';
@@ -92,10 +93,10 @@ export const useCreateUser = () => {
     mutationFn: (payload: RegisterRequest) => userService.createUser(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Utilisateur crAcAc !');
+      toast.success('Utilisateur créé');
     },
     onError: (error: any) => {
-      const message = error.response?.data?.message || 'Erreur lors de la crAcation';
+      const message = error.response?.data?.message || 'Erreur lors de la création';
       toast.error(message);
     },
   });

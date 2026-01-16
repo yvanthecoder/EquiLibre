@@ -36,7 +36,12 @@ export const AdminRequirements: React.FC = () => {
   const { updateRequirement, deleteRequirement, isDeleting, isUpdating } = useUpdateRequirement(selectedReq || '');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateRequirementRequest>();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateRequirementRequest>();
 
   useEffect(() => {
     if (!selectedClassId && classes?.length) {
@@ -98,9 +103,7 @@ export const AdminRequirements: React.FC = () => {
     },
     {
       header: 'Description',
-      accessor: (row: any) => (
-        <span className="line-clamp-2">{row.description}</span>
-      ),
+      accessor: (row: any) => <span className="line-clamp-2">{row.description}</span>,
     },
     {
       header: 'Date limite',
@@ -114,19 +117,10 @@ export const AdminRequirements: React.FC = () => {
       header: 'Actions',
       accessor: (row: any) => (
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleEdit(row)}
-          >
+          <Button size="sm" variant="outline" onClick={() => handleEdit(row)}>
             <PencilIcon className="h-4 w-4" />
           </Button>
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() => handleDelete(row.id)}
-            disabled={isDeleting}
-          >
+          <Button size="sm" variant="danger" onClick={() => handleDelete(row.id)} disabled={isDeleting}>
             <TrashIcon className="h-4 w-4" />
           </Button>
         </div>
@@ -138,7 +132,9 @@ export const AdminRequirements: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => window.history.back()}>← Retour</Button>
+          <Button variant="outline" size="sm" onClick={() => window.history.back()}>
+            Retour
+          </Button>
           <h1 className="text-2xl font-bold text-gray-900">Gestion des exigences</h1>
           <select
             value={selectedClassId}
@@ -164,15 +160,10 @@ export const AdminRequirements: React.FC = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         ) : (
-          <Table
-            data={requirements || []}
-            columns={columns}
-            emptyMessage="Aucune exigence créée"
-          />
+          <Table data={requirements || []} columns={columns} emptyMessage="Aucune exigence créée" />
         )}
       </Card>
 
-      {/* Create/Edit Modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => {
@@ -185,51 +176,37 @@ export const AdminRequirements: React.FC = () => {
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Titre *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
             <input
               {...register('title', { required: 'Titre requis' })}
               type="text"
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
-            {errors.title && (
-              <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
-            )}
+            {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
             <textarea
               {...register('description', { required: 'Description requise' })}
               rows={4}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
-            {errors.description && (
-              <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
-            )}
+            {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date limite *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date limite *</label>
               <input
                 {...register('dueDate', { required: 'Date requise' })}
                 type="datetime-local"
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
-              {errors.dueDate && (
-                <p className="mt-1 text-sm text-red-600">{errors.dueDate.message}</p>
-              )}
+              {errors.dueDate && <p className="mt-1 text-sm text-red-600">{errors.dueDate.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Classe
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Classe</label>
               <select
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}

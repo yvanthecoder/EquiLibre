@@ -31,8 +31,8 @@ export const RequirementDetail: React.FC = () => {
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
 
-  const isInstructor = user?.role === 'TUTEUR' || user?.role === 'MAITRE_APP' || user?.role === 'RESP_PLATEFORME';
-  const isStudent = user?.role === 'ETUDIANT' || user?.role === 'ALTERNANT';
+  const isEvaluator = ['ADMIN', 'TUTEUR_ECOLE', 'MAITRE_APP', 'JURY', 'INTERVENANT'].includes(user?.role || '');
+  const isStudent = ['ETUDIANT_CLASSIQUE', 'ALTERNANT'].includes(user?.role || '');
 
   const handleSubmit = () => {
     if (selectedFile) {
@@ -71,10 +71,7 @@ export const RequirementDetail: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Link
-          to="/requirements"
-          className="flex items-center text-gray-600 hover:text-gray-900"
-        >
+        <Link to="/requirements" className="flex items-center text-gray-600 hover:text-gray-900">
           <ArrowLeftIcon className="h-5 w-5 mr-2" />
           Retour
         </Link>
@@ -105,17 +102,14 @@ export const RequirementDetail: React.FC = () => {
           </div>
 
           {isStudent && requirement.status !== 'LOCKED' && (
-            <Button onClick={() => setShowSubmitModal(true)}>
-              Soumettre un document
-            </Button>
+            <Button onClick={() => setShowSubmitModal(true)}>Soumettre un document</Button>
           )}
         </div>
       </Card>
 
-      {/* Submissions */}
       <Card>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          {isInstructor ? 'Soumissions des étudiants' : 'Mes soumissions'}
+          {isEvaluator ? 'Soumissions des étudiants' : 'Mes soumissions'}
         </h2>
 
         {isLoadingSubmissions ? (
@@ -125,10 +119,7 @@ export const RequirementDetail: React.FC = () => {
         ) : submissions && submissions.length > 0 ? (
           <div className="space-y-3">
             {submissions.map((submission) => (
-              <div
-                key={submission.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-              >
+              <div key={submission.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <DocumentArrowDownIcon className="h-5 w-5 text-gray-400" />
@@ -138,9 +129,7 @@ export const RequirementDetail: React.FC = () => {
                         Soumis le {format(new Date(submission.submittedAt), 'dd/MM/yyyy à HH:mm', { locale: fr })}
                       </p>
                       {submission.feedback && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          Feedback: {submission.feedback}
-                        </p>
+                        <p className="text-sm text-gray-600 mt-1">Feedback : {submission.feedback}</p>
                       )}
                     </div>
                   </div>
@@ -149,7 +138,7 @@ export const RequirementDetail: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <StatusBadge status={submission.status} size="sm" />
 
-                  {isInstructor && submission.status === 'SUBMITTED' && (
+                  {isEvaluator && submission.status === 'SUBMITTED' && (
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -182,12 +171,7 @@ export const RequirementDetail: React.FC = () => {
         )}
       </Card>
 
-      {/* Submit Modal */}
-      <Modal
-        isOpen={showSubmitModal}
-        onClose={() => setShowSubmitModal(false)}
-        title="Soumettre un document"
-      >
+      <Modal isOpen={showSubmitModal} onClose={() => setShowSubmitModal(false)} title="Soumettre un document">
         <div className="space-y-4">
           <FileUpload
             onFileSelect={setSelectedFile}
@@ -200,28 +184,17 @@ export const RequirementDetail: React.FC = () => {
             <Button variant="secondary" onClick={() => setShowSubmitModal(false)}>
               Annuler
             </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!selectedFile}
-              isLoading={isSubmitting}
-            >
+            <Button onClick={handleSubmit} disabled={!selectedFile} isLoading={isSubmitting}>
               Soumettre
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Feedback Modal */}
-      <Modal
-        isOpen={showFeedbackModal}
-        onClose={() => setShowFeedbackModal(false)}
-        title="Ajouter un feedback"
-      >
+      <Modal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} title="Ajouter un feedback">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Commentaire (optionnel)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Commentaire (optionnel)</label>
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}

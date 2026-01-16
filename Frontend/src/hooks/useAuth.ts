@@ -18,16 +18,13 @@ export const useAuth = () => {
         return null;
       }
     },
-    enabled: !!localStorage.getItem('access_token'),
     retry: false,
   });
 
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: authService.login,
-    onSuccess: ({ user, tokens }) => {
-      localStorage.setItem('access_token', tokens.access_token);
-      localStorage.setItem('refresh_token', tokens.refresh_token);
+    onSuccess: ({ user }) => {
       queryClient.setQueryData(['auth', 'me'], user);
       toast.success(`Bienvenue ${user.firstName} !`);
       navigate('/dashboard');
@@ -41,9 +38,7 @@ export const useAuth = () => {
   // Register mutation
   const registerMutation = useMutation({
     mutationFn: authService.register,
-    onSuccess: ({ user, tokens }) => {
-      localStorage.setItem('access_token', tokens.access_token);
-      localStorage.setItem('refresh_token', tokens.refresh_token);
+    onSuccess: ({ user }) => {
       queryClient.setQueryData(['auth', 'me'], user);
       toast.success('Compte créé avec succès !');
       navigate('/dashboard');
@@ -61,8 +56,6 @@ export const useAuth = () => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
       queryClient.clear();
       navigate('/login');
     }

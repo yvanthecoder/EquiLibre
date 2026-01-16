@@ -1,5 +1,13 @@
 -- RESET COMPLET POUR LES DONNAA?ES DE DEMO
 TRUNCATE TABLE requirement_submissions CASCADE;
+TRUNCATE TABLE evaluation_scores CASCADE;
+TRUNCATE TABLE evaluations CASCADE;
+TRUNCATE TABLE evaluation_criteria CASCADE;
+TRUNCATE TABLE evaluation_grids CASCADE;
+TRUNCATE TABLE soutenance_jury CASCADE;
+TRUNCATE TABLE soutenances CASCADE;
+TRUNCATE TABLE interviews CASCADE;
+TRUNCATE TABLE journals CASCADE;
 TRUNCATE TABLE files CASCADE;
 TRUNCATE TABLE messages CASCADE;
 TRUNCATE TABLE conversation_participants CASCADE;
@@ -13,6 +21,14 @@ TRUNCATE TABLE classes CASCADE;
 TRUNCATE TABLE users CASCADE;
 
 ALTER SEQUENCE requirement_submissions_id_seq RESTART WITH 1;
+ALTER SEQUENCE evaluation_scores_id_seq RESTART WITH 1;
+ALTER SEQUENCE evaluations_id_seq RESTART WITH 1;
+ALTER SEQUENCE evaluation_criteria_id_seq RESTART WITH 1;
+ALTER SEQUENCE evaluation_grids_id_seq RESTART WITH 1;
+ALTER SEQUENCE soutenance_jury_id_seq RESTART WITH 1;
+ALTER SEQUENCE soutenances_id_seq RESTART WITH 1;
+ALTER SEQUENCE interviews_id_seq RESTART WITH 1;
+ALTER SEQUENCE journals_id_seq RESTART WITH 1;
 ALTER SEQUENCE files_id_seq RESTART WITH 1;
 ALTER SEQUENCE messages_id_seq RESTART WITH 1;
 ALTER SEQUENCE conversation_participants_id_seq RESTART WITH 1;
@@ -48,6 +64,11 @@ INSERT INTO users (email, password, firstname, lastname, role, company, is_verif
 INSERT INTO users (email, password, firstname, lastname, role, is_verified, job_title) VALUES
 ('etudiant1@student.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Julie', 'Moreau', 'ETUDIANT_CLASSIQUE', true, 'Actudiant'),
 ('etudiant2@student.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Thomas', 'Simon', 'ETUDIANT_CLASSIQUE', true, 'Actudiant');
+
+-- JURY / INTERVENANTS
+INSERT INTO users (email, password, firstname, lastname, role, company, phone, is_verified, job_title) VALUES
+('jury1@equilibre.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Claire', 'Laurent', 'JURY', 'ESEO', '0605060708', true, 'Professeur'),
+('intervenant1@equilibre.com', '$2b$10$QFgV3ZPcTJUadqW.Ch4P7.O7Zm1HE0EbQRr/ndADnrH1qdJTOxEka', 'Nicolas', 'Rossi', 'INTERVENANT', 'Entreprise X', '0606070809', true, 'Intervenant externe');
 
 -- CLASSES
 INSERT INTO classes (name, description, year, level, tuteur_id) VALUES

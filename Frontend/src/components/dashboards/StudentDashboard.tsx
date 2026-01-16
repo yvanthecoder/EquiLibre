@@ -19,22 +19,21 @@ export const StudentDashboard: React.FC = () => {
   const { notifications } = useNotifications();
   const navigate = useNavigate();
 
-  // Get upcoming deadlines
   const upcomingDeadlines = requirements
-    ?.filter(req => new Date(req.dueDate) > new Date())
+    ?.filter((req) => new Date(req.dueDate) > new Date())
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .slice(0, 5);
 
-  // Get pending requirements
-  const pendingRequirements = requirements?.filter(req => req.status === 'PENDING');
+  const pendingRequirements = requirements?.filter((req) => req.status === 'PENDING');
 
-  // Get upcoming events
-  const upcomingEvents = useMemo(() => (
-    events
-      ?.filter(event => new Date(event.startDate) > new Date())
-      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-      .slice(0, 3)
-  ), [events]);
+  const upcomingEvents = useMemo(
+    () =>
+      events
+        ?.filter((event) => new Date(event.startDate) > new Date())
+        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+        .slice(0, 3),
+    [events]
+  );
 
   const isAlternant = user?.role === 'ALTERNANT';
 
@@ -59,7 +58,6 @@ export const StudentDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <h3 className="text-sm font-medium opacity-90">Exigences en attente</h3>
@@ -80,12 +78,11 @@ export const StudentDashboard: React.FC = () => {
       {isAlternant && (
         <Card className="bg-yellow-50 border-yellow-200">
           <div className="flex items-start space-x-3">
-            <span className="text-2xl"> </span>
             <div>
-              <h3 className="font-semibold text-gray-900">Statut Alternance</h3>
+              <h3 className="font-semibold text-gray-900">Statut alternance</h3>
               <p className="text-sm text-gray-600 mt-1">
-                N'oubliez pas de soumettre vos documents d'alternance avant les échéances.
-                Contactez votre maître d'apprentissage si vous avez des questions.
+                N&apos;oubliez pas de soumettre vos documents d&apos;alternance avant les échéances.
+                Contactez votre maître d&apos;apprentissage si vous avez des questions.
               </p>
             </div>
           </div>
@@ -93,54 +90,53 @@ export const StudentDashboard: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming Deadlines */}
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Prochaines échéances
-            </h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/requirements')}>Voir tout</Button>
+            <h2 className="text-lg font-semibold text-gray-900">Prochaines échéances</h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/requirements')}>
+              Voir tout
+            </Button>
           </div>
           <div className="space-y-3">
-              {upcomingDeadlines?.length ? (
-                upcomingDeadlines.map(req => (
-                  <div
-                    key={req.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/requirements/${req.id}`)}
-                  >
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{req.title}</h3>
-                      <p className="text-sm text-gray-600">
-                        Échéance: {format(new Date(req.dueDate), 'dd/MM/yyyy', { locale: fr })}
-                      </p>
+            {upcomingDeadlines?.length ? (
+              upcomingDeadlines.map((req) => (
+                <div
+                  key={req.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/requirements/${req.id}`)}
+                >
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{req.title}</h3>
+                    <p className="text-sm text-gray-600">
+                      Échéance: {format(new Date(req.dueDate), 'dd/MM/yyyy', { locale: fr })}
+                    </p>
                   </div>
                   <StatusBadge status={req.status} size="sm" />
                 </div>
               ))
             ) : (
-              <p className="text-gray-500 text-center py-4">
-                Aucune échéance à venir
-              </p>
+              <p className="text-gray-500 text-center py-4">Aucune échéance à venir</p>
             )}
           </div>
         </Card>
 
-        {/* Upcoming Events */}
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Prochains événements
-            </h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')}>Voir tout</Button>
+            <h2 className="text-lg font-semibold text-gray-900">Prochains événements</h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')}>
+              Voir tout
+            </Button>
           </div>
           <div className="space-y-3">
             {upcomingEvents?.length ? (
-              upcomingEvents.map(event => (
+              upcomingEvents.map((event) => (
                 <div
                   key={event.id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
-                  onClick={() => navigate('/calendar')}
+                  onClick={() => {
+                    const dateParam = format(new Date(event.startDate), 'yyyy-MM-dd');
+                    navigate(`/calendar?date=${dateParam}&eventId=${event.id}`);
+                  }}
                 >
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900">{event.title}</h3>
@@ -154,32 +150,30 @@ export const StudentDashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <p className="text-gray-500 text-center py-4">
-                Aucun événement à venir
-              </p>
+              <p className="text-gray-500 text-center py-4">Aucun événement à venir</p>
             )}
           </div>
         </Card>
 
-        {/* Recent Notifications */}
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Notifications récentes
-            </h2>
-            <Button variant="ghost" size="sm" onClick={markAllNotifications}>Tout marquer comme lu</Button>
+            <h2 className="text-lg font-semibold text-gray-900">Notifications récentes</h2>
+            <Button variant="ghost" size="sm" onClick={markAllNotifications}>
+              Tout marquer comme lu
+            </Button>
           </div>
           <div className="space-y-3">
             {notifications?.slice(0, 3).length ? (
-              notifications.slice(0, 3).map(notification => (
-                <div key={notification.id} className={`p-3 rounded-md ${
-                  notification.read ? 'bg-gray-50' : 'bg-blue-50 border border-blue-200'
-                }`}>
+              notifications.slice(0, 3).map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`p-3 rounded-md ${
+                    notification.read ? 'bg-gray-50' : 'bg-blue-50 border border-blue-200'
+                  }`}
+                >
                   <div className="flex items-start justify-between">
                     <h3 className="font-medium text-gray-900">{notification.title}</h3>
-                    {!notification.read && (
-                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    )}
+                    {!notification.read && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
                   </div>
                   <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
                   <p className="text-xs text-gray-500 mt-1">
@@ -188,36 +182,33 @@ export const StudentDashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <p className="text-gray-500 text-center py-4">
-                Aucune notification récente
-              </p>
+              <p className="text-gray-500 text-center py-4">Aucune notification récente</p>
             )}
           </div>
         </Card>
 
-        {/* Quick Actions */}
         <Card>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Actions rapides
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Actions rapides</h2>
           <div className="space-y-2">
             <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/files')}>
-              <span className="mr-2">📄</span>
               Soumettre un document
             </Button>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/journals')}>
+              Mettre à jour mon journal
+            </Button>
             <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/messages')}>
-              <span className="mr-2">💬</span>
               Contacter mon tuteur
             </Button>
             {isAlternant && (
               <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/messages')}>
-                <span className="mr-2">👔</span>
                 Contacter mon maître d'apprentissage
               </Button>
             )}
             <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/calendar')}>
-              <span className="mr-2"> </span>
-              Voir mes cours
+              Voir le calendrier
+            </Button>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/evaluations')}>
+              Consulter mes notes
             </Button>
           </div>
         </Card>

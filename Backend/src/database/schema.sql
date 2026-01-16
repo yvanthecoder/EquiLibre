@@ -4,6 +4,14 @@
 
 -- Nettoyage
 DROP TABLE IF EXISTS requirement_submissions CASCADE;
+DROP TABLE IF EXISTS evaluation_scores CASCADE;
+DROP TABLE IF EXISTS evaluations CASCADE;
+DROP TABLE IF EXISTS evaluation_criteria CASCADE;
+DROP TABLE IF EXISTS evaluation_grids CASCADE;
+DROP TABLE IF EXISTS soutenance_jury CASCADE;
+DROP TABLE IF EXISTS soutenances CASCADE;
+DROP TABLE IF EXISTS interviews CASCADE;
+DROP TABLE IF EXISTS journals CASCADE;
 DROP TABLE IF EXISTS files CASCADE;
 DROP TABLE IF EXISTS conversation_participants CASCADE;
 DROP TABLE IF EXISTS conversations CASCADE;
@@ -16,6 +24,10 @@ DROP TABLE IF EXISTS events CASCADE;
 DROP TABLE IF EXISTS classes CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TYPE IF EXISTS submission_status CASCADE;
+DROP TYPE IF EXISTS evaluation_context CASCADE;
+DROP TYPE IF EXISTS journal_status CASCADE;
+DROP TYPE IF EXISTS interview_status CASCADE;
+DROP TYPE IF EXISTS soutenance_status CASCADE;
 DROP TYPE IF EXISTS event_type CASCADE;
 DROP TYPE IF EXISTS user_role CASCADE;
 DROP TYPE IF EXISTS requirement_status CASCADE;
@@ -26,7 +38,9 @@ CREATE TYPE user_role AS ENUM (
     'ETUDIANT_CLASSIQUE',
     'MAITRE_APP',
     'TUTEUR_ECOLE',
-    'ADMIN'
+    'ADMIN',
+    'JURY',
+    'INTERVENANT'
 );
 
 -- ENUM STATUT REQUIREMENTS
@@ -34,6 +48,18 @@ CREATE TYPE requirement_status AS ENUM ('PENDING', 'SUBMITTED', 'VALIDATED', 'RE
 
 -- ENUM STATUT SOUMISSIONS
 CREATE TYPE submission_status AS ENUM ('SUBMITTED', 'VALIDATED', 'REJECTED');
+
+-- ENUM STATUT JOURNAL
+CREATE TYPE journal_status AS ENUM ('DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'VALIDATED', 'ARCHIVED');
+
+-- ENUM STATUT ENTRETIEN
+CREATE TYPE interview_status AS ENUM ('PROPOSED', 'PLANNED', 'CONFIRMED', 'COMPLETED', 'ARCHIVED');
+
+-- ENUM STATUT SOUTENANCE
+CREATE TYPE soutenance_status AS ENUM ('PLANNED', 'CONFIRMED', 'IN_PROGRESS', 'EVALUATED', 'ARCHIVED');
+
+-- ENUM CONTEXTE EVALUATION
+CREATE TYPE evaluation_context AS ENUM ('JOURNAL', 'REQUIREMENT', 'SOUTENANCE');
 
 -- ENUM TYPE EVENEMENTS
 CREATE TYPE event_type AS ENUM ('COURSE', 'EXAM', 'DEADLINE', 'MEETING');
@@ -114,6 +140,97 @@ CREATE TABLE requirement_submissions (
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     validated_at TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- JOURNAUX DE FORMATION
+CREATE TABLE journals (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    period_start DATE,
+    period_end DATE,
+    status journal_status DEFAULT 'DRAFT',
+    content TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    validated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    validated_at TIMESTAMP,
+    validation_comment TEXT
+);
+
+-- ENTRETIENS SEMESTRIELS
+CREATE TABLE interviews (
+    id SERIAL PRIMARY KEY,
+    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tuteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    maitre_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    scheduled_at TIMESTAMP NOT NULL,
+    location TEXT,
+    status interview_status DEFAULT 'PLANNED',
+    summary TEXT,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- SOUTENANCES
+CREATE TABLE soutenances (
+    id SERIAL PRIMARY KEY,
+    class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    scheduled_at TIMESTAMP NOT NULL,
+    location TEXT,
+    status soutenance_status DEFAULT 'PLANNED',
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- JURY DE SOUTENANCE
+CREATE TABLE soutenance_jury (
+    id SERIAL PRIMARY KEY,
+    soutenance_id INTEGER NOT NULL REFERENCES soutenances(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE (soutenance_id, user_id)
+);
+
+-- GRILLES D'EVALUATION
+CREATE TABLE evaluation_grids (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE evaluation_criteria (
+    id SERIAL PRIMARY KEY,
+    grid_id INTEGER NOT NULL REFERENCES evaluation_grids(id) ON DELETE CASCADE,
+    label VARCHAR(255) NOT NULL,
+    max_score NUMERIC(5,2) NOT NULL DEFAULT 20,
+    weight NUMERIC(5,2) NOT NULL DEFAULT 1
+);
+
+-- EVALUATIONS
+CREATE TABLE evaluations (
+    id SERIAL PRIMARY KEY,
+    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    evaluator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    context_type evaluation_context NOT NULL,
+    context_id INTEGER NOT NULL,
+    grid_id INTEGER REFERENCES evaluation_grids(id) ON DELETE SET NULL,
+    overall_score NUMERIC(5,2),
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE evaluation_scores (
+    id SERIAL PRIMARY KEY,
+    evaluation_id INTEGER NOT NULL REFERENCES evaluations(id) ON DELETE CASCADE,
+    criteria_id INTEGER NOT NULL REFERENCES evaluation_criteria(id) ON DELETE CASCADE,
+    score NUMERIC(5,2) NOT NULL,
+    comment TEXT
 );
 
 -- EVENEMENTS DE CLASSE
@@ -241,6 +358,21 @@ CREATE TRIGGER update_requirements_updated_at BEFORE UPDATE ON requirements
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_requirement_submissions_updated_at BEFORE UPDATE ON requirement_submissions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_journals_updated_at BEFORE UPDATE ON journals
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_interviews_updated_at BEFORE UPDATE ON interviews
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_soutenances_updated_at BEFORE UPDATE ON soutenances
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_evaluation_grids_updated_at BEFORE UPDATE ON evaluation_grids
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_evaluations_updated_at BEFORE UPDATE ON evaluations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON events

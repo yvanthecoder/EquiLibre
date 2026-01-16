@@ -29,6 +29,8 @@ const roleLabels: Record<UserRole, string> = {
   TUTEUR_ECOLE: 'Tuteur',
   MAITRE_APP: "Maître d'app.",
   ADMIN: 'Admin',
+  JURY: 'Jury',
+  INTERVENANT: 'Intervenant',
 };
 
 const defaultForm: FormState = {

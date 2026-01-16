@@ -12,6 +12,13 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const assignmentRoutes = require('./routes/assignmentRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const fileRoutes = require('./routes/fileRoutes');
+const journalRoutes = require('./routes/journalRoutes');
+const interviewRoutes = require('./routes/interviewRoutes');
+const soutenanceRoutes = require('./routes/soutenanceRoutes');
+const evaluationGridRoutes = require('./routes/evaluationGridRoutes');
+const evaluationRoutes = require('./routes/evaluationRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 // Initialiser l'application Express
 const app = express();
@@ -87,6 +94,13 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/journals', journalRoutes);
+app.use('/api/interviews', interviewRoutes);
+app.use('/api/soutenances', soutenanceRoutes);
+app.use('/api/evaluation-grids', evaluationGridRoutes);
+app.use('/api/evaluations', evaluationRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportRoutes);
 
 // =============================================
 // GESTION DES ERREURS
