@@ -20,6 +20,9 @@ const evaluationRoutes = require('./routes/evaluationRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 
+
+
+console.log('ready')
 // Initialiser l'application Express
 const app = express();
 
