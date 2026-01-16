@@ -76,6 +76,8 @@ EquiLibre/
 |   **MAITRE_APP** | Maître d'apprentissage | Voir données de ses apprentis |
 |   **ALTERNANT** | Étudiant en alternance | Voir ses requirements et classes |
 |   **ETUDIANT_CLASSIQUE** | Étudiant cycle classique | Voir ses requirements et classes |
+|   **INTERVENANT**  | Intervenant  |  Assister et noter les soutenances  | 
+|   **JURY**  | Jury  |  Présider et noter les soutenances  | 
 
 ---
 
@@ -88,9 +90,10 @@ EquiLibre/
 | admin@equilibre.com | ADMIN |
 | tuteur1@equilibre.com | TUTEUR_ECOLE |
 | maitre1@entreprise.com | MAITRE_APP |
-| alternant1@student.com | ALTERNANT |
-| etudiant1@student.com | ETUDIANT_CLASSIQUE |
-
+| alternant1@equilibre.com | ALTERNANT |
+| etudiant1@equilibre.com | ETUDIANT_CLASSIQUE |
+| intervenant1@equilibre.com  |  INTERVENANT  |
+| jury1@equilibre.com  |  JURY  |
 ---
 
 ##   Documentation
@@ -120,12 +123,12 @@ curl -X POST http://localhost:5001/api/auth/login \
 
 | Composant | Statut |
 |-----------|--------|
-| Backend API |   **TERMINÉ** |
+| Backend API |   **EN COURS DE DEVELOPPEMENT** |
 | Base de données |   **TERMINÉ** |
 | Authentification JWT |   **TERMINÉ** |
 | Gestion des rôles |   **TERMINÉ** |
 | Endpoints API |   **TERMINÉ** |
-| Frontend React |   À développer |
+| Frontend React |   **EN COURS DE DEVELOPPEMENT** |
 
 ---
 
@@ -138,7 +141,7 @@ curl -X POST http://localhost:5001/api/auth/login \
 - Bcrypt
 - CORS
 
-### Frontend (à développer)
+### Frontend
 - React
 - Axios / Fetch
 - React Router
@@ -148,13 +151,7 @@ curl -X POST http://localhost:5001/api/auth/login \
 
 ##   Prochaines étapes
 
-1.   Backend fonctionnel avec authentification
-2.   Base de données configurée avec 5 rôles
-3.   Développer le Frontend React
-4.   Implémenter les dashboards par rôle
-5.   Ajouter la messagerie
-6.   Ajouter les notifications
-7.   Déploiement
+1.   Réalisation des US restantes
 
 ---
 
@@ -189,9 +186,12 @@ ISC
 ## 👥 Équipe
 
 EquiLibre Team - Projet SIGL
+- Yvan
+- Nassim
+- Adrien
+- Ange-Beatriz
 
 ---
 
-**  BACKEND PRÊT POUR LE DÉVELOPPEMENT FRONTEND !**
+**  BACKEND ET FRONTEND FONCTIONNEL !**
 
-Consultez [GUIDE_DEMARRAGE.md](GUIDE_DEMARRAGE.md) pour démarrer.
