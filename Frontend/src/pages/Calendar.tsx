@@ -91,29 +91,6 @@ export const Calendar: React.FC = () => {
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 }); // dimanche
   const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const interviewEvents = useMemo(() => {
-    const statusLabels: Record<string, string> = {
-      PROPOSED: 'Proposé',
-      PLANNED: 'Planifié',
-      CONFIRMED: 'Confirmé',
-      COMPLETED: 'Terminé',
-      ARCHIVED: 'Archivé',
-    };
-    return (interviews || []).map((interview) => {
-      const start = new Date(interview.scheduledAt);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
-      return {
-        id: `INT-${interview.id}`,
-        title: 'Entretien semestriel',
-        description: `Statut: ${statusLabels[interview.status] || interview.status}`,
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
-        classId: activeClassId || user?.classId || '',
-        type: 'MEETING' as const,
-      };
-    });
-  }, [interviews, activeClassId, user?.classId]);
-
   const combinedEvents = useMemo(() => {
     const base = events || [];
     const withInterviews = [...base, ...interviewEvents];
