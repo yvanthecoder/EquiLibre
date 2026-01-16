@@ -2,6 +2,7 @@ const Assignment = require('../models/Assignment');
 const AssignmentLog = require('../models/AssignmentLog');
 const User = require('../models/User');
 const { ERROR_MESSAGES, USER_ROLES } = require('../config/constants');
+const { createNotification } = require('../utils/notifications');
 
 // Obtenir toutes les assignations
 const getAllAssignments = async (req, res) => {
@@ -179,6 +180,26 @@ const createAssignment = async (req, res) => {
             changed_by: req.user.userId
         });
 
+        try {
+            const studentLabel = student.firstname && student.lastname
+                ? `${student.firstname} ${student.lastname}`
+                : `Etudiant #${studentId}`;
+            const recipients = [];
+            if (maitreId) recipients.push({ id: maitreId, role: 'maitre d\'apprentissage' });
+            if (tuteurId) recipients.push({ id: tuteurId, role: 'tuteur ecole' });
+            for (const recipient of recipients) {
+                await createNotification({
+                    userId: recipient.id,
+                    title: 'Nouvelle assignation',
+                    message: `Vous etes assigne comme ${recipient.role} de ${studentLabel}.`,
+                    type: 'INFO',
+                    link: '/dashboard'
+                });
+            }
+        } catch (notifyError) {
+            console.warn('Notification assignation echouee:', notifyError.message);
+        }
+
         res.status(201).json({
             success: true,
             message: 'Assignation créée avec succès',
@@ -273,6 +294,30 @@ const updateAssignment = async (req, res) => {
             action: 'UPDATED',
             changed_by: req.user.userId
         });
+
+        try {
+            const studentLabel = existingAssignment.student_firstname && existingAssignment.student_lastname
+                ? `${existingAssignment.student_firstname} ${existingAssignment.student_lastname}`
+                : `Etudiant #${existingAssignment.student_id}`;
+            const recipients = [];
+            if (maitreId !== undefined && maitreId && maitreId !== existingAssignment.maitre_id) {
+                recipients.push({ id: maitreId, role: 'maitre d\'apprentissage' });
+            }
+            if (tuteurId !== undefined && tuteurId && tuteurId !== existingAssignment.tuteur_id) {
+                recipients.push({ id: tuteurId, role: 'tuteur ecole' });
+            }
+            for (const recipient of recipients) {
+                await createNotification({
+                    userId: recipient.id,
+                    title: 'Nouvelle assignation',
+                    message: `Vous etes assigne comme ${recipient.role} de ${studentLabel}.`,
+                    type: 'INFO',
+                    link: '/dashboard'
+                });
+            }
+        } catch (notifyError) {
+            console.warn('Notification mise a jour assignation echouee:', notifyError.message);
+        }
 
         res.json({
             success: true,

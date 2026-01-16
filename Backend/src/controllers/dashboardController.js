@@ -35,11 +35,11 @@ const getDashboardStats = async (req, res) => {
                 const soutenanceSql = `
                     SELECT scheduled_at as "scheduledAt"
                     FROM soutenances
-                    WHERE class_id = $1 AND scheduled_at > NOW()
+                    WHERE student_id = $1 AND scheduled_at > NOW()
                     ORDER BY scheduled_at ASC
                     LIMIT 1
                 `;
-                const sRes = await query(soutenanceSql, [user.class_id]);
+                const sRes = await query(soutenanceSql, [userId]);
                 nextSoutenance = sRes.rows[0]?.scheduledAt || null;
             }
 

@@ -48,6 +48,7 @@ export const Sidebar: React.FC = () => {
   const isJury = user?.role === 'JURY';
   const isIntervenant = user?.role === 'INTERVENANT';
   const isStudent = user?.role === 'ALTERNANT' || user?.role === 'ETUDIANT_CLASSIQUE';
+  const isClassicStudent = user?.role === 'ETUDIANT_CLASSIQUE';
 
   return (
     <div className="flex h-full w-64 flex-col bg-gray-900">
@@ -62,8 +63,23 @@ export const Sidebar: React.FC = () => {
           .filter((item) => {
             // Admin/maître n'ont pas de classe : cacher "Ma Classe"
             if ((isAdmin || isMaitre) && item.name === 'Ma Classe') return false;
+            // Étudiant/alternant : annuaire + ma classe inutiles
+            if (isStudent && (item.name === 'Annuaire' || item.name === 'Ma Classe')) return false;
+            // Étudiant classique : pas d'exigences
+            if (isClassicStudent && item.name === 'Exigences') return false;
             // Admin ne voit pas exigence/fichiers côté user
             if (isAdmin && (item.name === 'Exigences' || item.name === 'Mes Fichiers')) return false;
+            // Tuteur : onglets inutiles
+            if (isTutor && (item.name === 'Annuaire' || item.name === 'Mes Fichiers' || item.name === 'Soutenances')) {
+              return false;
+            }
+            // Jury / Intervenant : onglets inutiles
+            if (
+              (isJury || isIntervenant) &&
+              (item.name === 'Exigences' || item.name === 'Mes Fichiers' || item.name === 'Messages' || item.name === 'Annuaire')
+            ) {
+              return false;
+            }
             // Autres rôles : si pas étudiant/alternant, cacher Ma Classe
             if (!isStudent && item.name === 'Ma Classe') return false;
             // Journaux visibles pour étudiants et encadrants
@@ -80,7 +96,8 @@ export const Sidebar: React.FC = () => {
             const isActive =
               location.pathname === item.href ||
               (item.href === '/class' && location.pathname.startsWith('/class/'));
-
+            const label =
+              item.name === 'Soutenances' && isStudent ? 'Mes Rendez-vous' : item.name;
             return (
               <Link
                 key={item.name}
@@ -92,7 +109,7 @@ export const Sidebar: React.FC = () => {
                 } group flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors`}
               >
                 <item.icon className="mr-3 h-5 w-5" />
-                {item.name}
+                {label}
               </Link>
             );
           })}

@@ -5,6 +5,18 @@ const Assignment = require('../models/Assignment');
 const { ERROR_MESSAGES, USER_ROLES } = require('../config/constants');
 const { createNotification } = require('../utils/notifications');
 
+const isValidPeriod = (periodStart, periodEnd) => {
+    if (!periodStart || !periodEnd) {
+        return true;
+    }
+    const startDate = new Date(periodStart);
+    const endDate = new Date(periodEnd);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        return false;
+    }
+    return startDate < endDate;
+};
+
 const getMyJournals = async (req, res) => {
     try {
         const journals = await Journal.findByUserId(req.user.userId);
@@ -39,6 +51,13 @@ const getJournalById = async (req, res) => {
 const createJournal = async (req, res) => {
     try {
         const { periodStart, periodEnd, content, status } = req.body;
+        if (!isValidPeriod(periodStart, periodEnd)) {
+            return res.status(400).json({
+                success: false,
+                message: ERROR_MESSAGES.BAD_REQUEST,
+                detail: 'La date de debut doit etre inferieure a la date de fin'
+            });
+        }
         const journal = await Journal.create({
             userId: req.user.userId,
             periodStart,
@@ -65,6 +84,16 @@ const updateJournal = async (req, res) => {
             return res.status(403).json({ success: false, message: ERROR_MESSAGES.FORBIDDEN });
         }
 
+        const nextPeriodStart = req.body.periodStart !== undefined ? req.body.periodStart : journal.periodStart;
+        const nextPeriodEnd = req.body.periodEnd !== undefined ? req.body.periodEnd : journal.periodEnd;
+        if (!isValidPeriod(nextPeriodStart, nextPeriodEnd)) {
+            return res.status(400).json({
+                success: false,
+                message: ERROR_MESSAGES.BAD_REQUEST,
+                detail: 'La date de debut doit etre inferieure a la date de fin'
+            });
+        }
+
         const updates = {};
         if (req.body.periodStart !== undefined) updates.period_start = req.body.periodStart;
         if (req.body.periodEnd !== undefined) updates.period_end = req.body.periodEnd;
@@ -88,6 +117,13 @@ const submitJournal = async (req, res) => {
         }
         if (journal.userId !== req.user.userId) {
             return res.status(403).json({ success: false, message: ERROR_MESSAGES.FORBIDDEN });
+        }
+        if (!isValidPeriod(journal.periodStart, journal.periodEnd)) {
+            return res.status(400).json({
+                success: false,
+                message: ERROR_MESSAGES.BAD_REQUEST,
+                detail: 'La date de debut doit etre inferieure a la date de fin'
+            });
         }
         const updated = await Journal.update(journalId, { status: 'SUBMITTED' });
         try {

@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const Requirement = require('../models/Requirement');
 const RequirementSubmission = require('../models/RequirementSubmission');
 const Class = require('../models/Class');
@@ -253,6 +255,70 @@ const getRequirementSubmissions = async (req, res) => {
     }
 };
 
+// Telecharger un document de soumission
+const downloadSubmission = async (req, res) => {
+    try {
+        const requirementId = parseInt(req.params.id, 10);
+        const submissionId = parseInt(req.params.submissionId, 10);
+
+        const submission = await RequirementSubmission.findById(submissionId);
+        if (!submission || submission.requirementId !== requirementId) {
+            return res.status(404).json({ success: false, message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        const requirement = await Requirement.findById(requirementId);
+        if (!requirement) {
+            return res.status(404).json({ success: false, message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+        let allowed = false;
+
+        if (userRole === USER_ROLES.ADMIN || submission.userId === userId) {
+            allowed = true;
+        }
+
+        if (!allowed && userRole === USER_ROLES.TUTEUR_ECOLE) {
+            const assignment = await Assignment.findByStudentId(submission.userId);
+            if (assignment?.tuteur_id === userId) {
+                allowed = true;
+            } else if (requirement.classId) {
+                const classData = await Class.findById(requirement.classId);
+                if (classData?.tuteur_id === userId) {
+                    allowed = true;
+                }
+            }
+        }
+
+        if (!allowed && userRole === USER_ROLES.MAITRE_APP) {
+            const assignment = await Assignment.findByStudentId(submission.userId);
+            if (assignment?.maitre_id === userId) {
+                allowed = true;
+            }
+        }
+
+        if (!allowed) {
+            return res.status(403).json({ success: false, message: ERROR_MESSAGES.FORBIDDEN });
+        }
+
+        let filePath = submission.filePath;
+        if (!path.isAbsolute(filePath)) {
+            const normalized = filePath.replace(/^[/\\]+/, '');
+            filePath = path.join(__dirname, '../../', normalized);
+        }
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        return res.download(filePath, submission.fileName);
+    } catch (error) {
+        console.error('Erreur lors du telechargement de la soumission:', error);
+        return res.status(500).json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+    }
+};
+
 // Soumettre un document pour un requirement
 const submitRequirement = async (req, res) => {
     try {
@@ -305,9 +371,7 @@ const submitRequirement = async (req, res) => {
                 });
             }
         } catch (notifyError) {
-            console.warn('Notification soumission requirement ?chou?e:', notifyError.message);
-        }
-
+            console.warn('Notification soumission requirement échouée:', notifyError.message);
         }
 
         return res.status(201).json(mapSubmission(submission));
@@ -366,6 +430,7 @@ module.exports = {
     deleteRequirement,
     getRequirementStats,
     getRequirementSubmissions,
+    downloadSubmission,
     submitRequirement,
     updateSubmissionStatus
 };

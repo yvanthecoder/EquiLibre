@@ -19,14 +19,60 @@ const mapRowToFile = (row) => ({
 
 class FileModel {
     // Insertion minimale pour rester compatible avec les schA�mas plus anciens (colonnes optionnelles non exigA�es)
-    static async create({ userId, classId, fileName, storedName, filePath, fileSize, mimeType }) {
-        const sql = `
-            INSERT INTO files (user_id, class_id, file_name, stored_name, file_path, file_size, mime_type)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *
-        `;
-        const result = await query(sql, [userId, classId || null, fileName, storedName, filePath, fileSize, mimeType]);
-        return mapRowToFile(result.rows[0]);
+    static async create({
+        userId,
+        classId,
+        fileName,
+        storedName,
+        filePath,
+        fileSize,
+        mimeType,
+        visibilityRole = null,
+        requiresSignature = false,
+        parentFileId = null,
+        version = 1
+    }) {
+        const baseValues = [userId, classId || null, fileName, storedName, filePath, fileSize, mimeType];
+        const safeVersion = version ?? 1;
+
+        try {
+            const sql = `
+                INSERT INTO files (
+                    user_id,
+                    class_id,
+                    file_name,
+                    stored_name,
+                    file_path,
+                    file_size,
+                    mime_type,
+                    visibility_role,
+                    requires_signature,
+                    version,
+                    parent_file_id
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                RETURNING *
+            `;
+            const result = await query(sql, [
+                ...baseValues,
+                visibilityRole || null,
+                !!requiresSignature,
+                safeVersion,
+                parentFileId || null
+            ]);
+            return mapRowToFile(result.rows[0]);
+        } catch (err) {
+            if (err.code && err.code !== '42703') {
+                throw err;
+            }
+            const fallbackSql = `
+                INSERT INTO files (user_id, class_id, file_name, stored_name, file_path, file_size, mime_type)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING *
+            `;
+            const result = await query(fallbackSql, baseValues);
+            return mapRowToFile(result.rows[0]);
+        }
     }
 
     static async findById(id) {

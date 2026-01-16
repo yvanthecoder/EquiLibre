@@ -1,14 +1,16 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useUsers } from '../hooks/useUsers';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
-import { useNavigate } from 'react-router-dom';
+import { messageService } from '../services/api.service';
 
 const roleLabels: Record<string, string> = {
   ALTERNANT: 'Alternant',
-  ETUDIANT_CLASSIQUE: 'Étudiant',
+  ETUDIANT_CLASSIQUE: 'Etudiant',
   TUTEUR_ECOLE: 'Tuteur',
-  MAITRE_APP: "Maître d'apprentissage",
+  MAITRE_APP: "Maitre d'apprentissage",
   ADMIN: 'Admin',
 };
 
@@ -16,6 +18,7 @@ export const Directory: React.FC = () => {
   const { users, isLoading } = useUsers();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
+  const [contactingId, setContactingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const filtered = useMemo(() => {
@@ -31,12 +34,25 @@ export const Directory: React.FC = () => {
     });
   }, [users, search, roleFilter]);
 
+  const handleContact = async (userId: string | number) => {
+    try {
+      setContactingId(String(userId));
+      const conversation = await messageService.createConversation([Number(userId)]);
+      navigate(`/messages/${conversation.id}`);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      toast.error('Impossible de demarrer la conversation');
+    } finally {
+      setContactingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Annuaire</h1>
-          <p className="text-gray-600">Trouvez camarades, tuteurs, maîtres d’apprentissage</p>
+          <p className="text-gray-600">Trouvez camarades, tuteurs, maitres d'apprentissage</p>
         </div>
         <div className="flex gap-2">
           <input
@@ -51,7 +67,7 @@ export const Directory: React.FC = () => {
             onChange={(e) => setRoleFilter(e.target.value)}
             className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm px-3 py-2"
           >
-            <option value="ALL">Tous les rôles</option>
+            <option value="ALL">Tous les roles</option>
             {Object.keys(roleLabels).map((r) => (
               <option key={r} value={r}>
                 {roleLabels[r]}
@@ -77,13 +93,18 @@ export const Directory: React.FC = () => {
                   <p className="text-sm text-gray-600">{u.email}</p>
                   <p className="text-xs text-gray-500">{roleLabels[u.role] || u.role}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => navigate('/messages')}>
-                  Contacter
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleContact(u.id)}
+                  disabled={contactingId === String(u.id)}
+                >
+                  {contactingId === String(u.id) ? 'Contact...' : 'Contacter'}
                 </Button>
               </div>
             ))}
             {filtered.length === 0 && (
-              <p className="text-sm text-gray-500 text-center py-4">Aucun résultat</p>
+              <p className="text-sm text-gray-500 text-center py-4">Aucun resultat</p>
             )}
           </div>
         )}

@@ -18,6 +18,9 @@ export interface Submission {
   status: 'SUBMITTED' | 'VALIDATED' | 'REJECTED';
   feedback?: string;
   submittedAt: string;
+  firstname?: string;
+  lastname?: string;
+  email?: string;
 }
 
 export interface Event {
@@ -59,11 +62,16 @@ export interface Interview {
 
 export interface Soutenance {
   id: string;
-  classId: string;
+  studentId: string;
+  classId?: string;
+  studentFirstName?: string;
+  studentLastName?: string;
   title: string;
   scheduledAt: string;
   location?: string;
   status: 'PLANNED' | 'CONFIRMED' | 'IN_PROGRESS' | 'EVALUATED' | 'ARCHIVED';
+  juryMembers?: Array<{ id: number; firstname: string; lastname: string; role: string }>;
+  validatedScore?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,8 +102,15 @@ export interface Evaluation {
   gridId?: string;
   overallScore?: number;
   comment?: string;
+  status?: 'PENDING' | 'VALIDATED' | 'REJECTED';
+  validatedBy?: string;
+  validatedAt?: string;
   createdAt: string;
   updatedAt: string;
+  contextLabel?: string;
+  evaluatorFirstName?: string;
+  evaluatorLastName?: string;
+  evaluatorRole?: string;
 }
 
 export interface EvaluationScore {
@@ -130,6 +145,8 @@ export interface Notification {
   type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR';
   read: boolean;
   createdAt: string;
+  link?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface Class {

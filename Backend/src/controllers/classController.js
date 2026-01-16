@@ -50,7 +50,10 @@ const mapSubmission = (row) => ({
     filePath: row.filePath,
     status: row.status,
     feedback: row.feedback,
-    submittedAt: row.submittedAt
+    submittedAt: row.submittedAt,
+    firstname: row.firstname,
+    lastname: row.lastname,
+    email: row.email
 });
 
 // Obtenir toutes les classes

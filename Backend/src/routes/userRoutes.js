@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAllUsers, getUserById, updateUser, deleteUser } = require('../controllers/userController');
+const { createUser, getAllUsers, getUserById, updateUser, deleteUser } = require('../controllers/userController');
 const { authenticate } = require('../middlewares/auth');
 const { requireAdmin, requireOwnerOrAdmin } = require('../middlewares/roleCheck');
 
@@ -10,6 +10,7 @@ const { requireAdmin, requireOwnerOrAdmin } = require('../middlewares/roleCheck'
  * @access  Private (Admin)
  */
 router.get('/', authenticate, requireAdmin, getAllUsers);
+router.post('/', authenticate, requireAdmin, createUser);
 
 /**
  * @route   GET /api/users/:id

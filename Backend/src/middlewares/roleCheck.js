@@ -134,7 +134,8 @@ const requireClassAccess = async (req, res, next) => {
                 `SELECT 1
                  FROM soutenance_jury sj
                  JOIN soutenances s ON s.id = sj.soutenance_id
-                 WHERE sj.user_id = $1 AND s.class_id = $2
+                 JOIN users u ON u.id = s.student_id
+                 WHERE sj.user_id = $1 AND u.class_id = $2
                  LIMIT 1`,
                 [userId, classId]
             );

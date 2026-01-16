@@ -3,19 +3,36 @@ import { Soutenance } from '../types/api';
 import { soutenanceService } from '../services/api.service';
 import toast from 'react-hot-toast';
 
-export const useSoutenances = (classId?: string) => {
+export const useSoutenances = (filters?: { classId?: string; studentId?: string }) => {
   return useQuery({
-    queryKey: ['soutenances', classId],
-    queryFn: () => soutenanceService.getSoutenances(classId),
+    queryKey: ['soutenances', filters?.classId, filters?.studentId],
+    queryFn: () => soutenanceService.getSoutenances(filters),
   });
 };
 
 export const useCreateSoutenance = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: Partial<Soutenance> & { classId: string; title: string; scheduledAt: string }) =>
+    mutationFn: (payload: Partial<Soutenance> & { studentId: string; title: string; scheduledAt: string }) =>
       soutenanceService.createSoutenance(payload),
-    onSuccess: () => {
+    onSuccess: (created) => {
+      const upsert = (current: Soutenance[] | undefined) => {
+        const items = Array.isArray(current) ? [...current] : [];
+        if (!created?.id) return items;
+        const id = created.id.toString();
+        const existingIndex = items.findIndex((item) => item.id?.toString() === id);
+        if (existingIndex === -1) {
+          items.unshift(created);
+        } else {
+          items[existingIndex] = { ...items[existingIndex], ...created };
+        }
+        return items;
+      };
+      queryClient.setQueryData(['soutenances', undefined, undefined], upsert);
+      const classKey = created?.classId ? created.classId.toString() : '';
+      if (classKey) {
+        queryClient.setQueryData(['soutenances', classKey, undefined], upsert);
+      }
       queryClient.invalidateQueries({ queryKey: ['soutenances'] });
       toast.success('Soutenance créée');
     },

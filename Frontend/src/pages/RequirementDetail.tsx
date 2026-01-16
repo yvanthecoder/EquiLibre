@@ -10,6 +10,8 @@ import { Modal } from '../components/UI/Modal';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ArrowLeftIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { requirementService } from '../services/api.service';
+import toast from 'react-hot-toast';
 
 export const RequirementDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +49,23 @@ export const RequirementDetail: React.FC = () => {
     setShowFeedbackModal(false);
     setFeedback('');
     setSelectedSubmission(null);
+  };
+
+  const handleDownload = async (submission: any) => {
+    if (!requirement) return;
+    try {
+      const blob = await requirementService.downloadSubmission(requirement.id.toString(), submission.id.toString());
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = submission.fileName || 'document';
+      link.rel = 'noopener';
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Erreur lors du telechargement';
+      toast.error(message);
+    }
   };
 
   if (isLoading) {
@@ -137,6 +156,9 @@ export const RequirementDetail: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <StatusBadge status={submission.status} size="sm" />
+                  <Button size="sm" variant="outline" onClick={() => handleDownload(submission)}>
+                    Consulter
+                  </Button>
 
                   {isEvaluator && submission.status === 'SUBMITTED' && (
                     <div className="flex gap-2">

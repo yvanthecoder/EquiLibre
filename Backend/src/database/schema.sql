@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS classes CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TYPE IF EXISTS submission_status CASCADE;
 DROP TYPE IF EXISTS evaluation_context CASCADE;
+DROP TYPE IF EXISTS evaluation_status CASCADE;
 DROP TYPE IF EXISTS journal_status CASCADE;
 DROP TYPE IF EXISTS interview_status CASCADE;
 DROP TYPE IF EXISTS soutenance_status CASCADE;
@@ -60,6 +61,7 @@ CREATE TYPE soutenance_status AS ENUM ('PLANNED', 'CONFIRMED', 'IN_PROGRESS', 'E
 
 -- ENUM CONTEXTE EVALUATION
 CREATE TYPE evaluation_context AS ENUM ('JOURNAL', 'REQUIREMENT', 'SOUTENANCE');
+CREATE TYPE evaluation_status AS ENUM ('PENDING', 'VALIDATED', 'REJECTED');
 
 -- ENUM TYPE EVENEMENTS
 CREATE TYPE event_type AS ENUM ('COURSE', 'EXAM', 'DEADLINE', 'MEETING');
@@ -172,10 +174,10 @@ CREATE TABLE interviews (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- SOUTENANCES
+-- SOUTENANCES (par etudiant)
 CREATE TABLE soutenances (
     id SERIAL PRIMARY KEY,
-    class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     scheduled_at TIMESTAMP NOT NULL,
     location TEXT,
@@ -221,6 +223,9 @@ CREATE TABLE evaluations (
     grid_id INTEGER REFERENCES evaluation_grids(id) ON DELETE SET NULL,
     overall_score NUMERIC(5,2),
     comment TEXT,
+    status evaluation_status DEFAULT 'PENDING',
+    validated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    validated_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
