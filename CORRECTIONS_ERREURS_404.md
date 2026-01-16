@@ -37,6 +37,7 @@
 - `markAllAsRead()` - Marquer toutes les notifications comme lues
 - `deleteNotification(id)` - Supprimer une notification
 - `createNotification()` - Créer une notification (admin uniquement)
+                                                 
 
 ####   Routes créées: `Backend/src/routes/notificationRoutes.js`
 
