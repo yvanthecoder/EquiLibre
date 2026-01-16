@@ -55,6 +55,10 @@ POST   /api/notifications           - Créer (admin/tuteur)
 ```
 
 ####   Routes enregistrées dans `server.js`
+
+
+
+
 ```javascript
 const notificationRoutes = require('./routes/notificationRoutes');
 app.use('/api/notifications', notificationRoutes);
